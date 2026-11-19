@@ -15,3 +15,11 @@ contents:
     dst: /usr/share/applications/ahhhh.desktop
     file_info:
       mode: 0644
+  - src: packaging/ahhhh.png
+    dst: /usr/share/icons/hicolor/256x256/apps/ahhhh.png
+    file_info:
+      mode: 0644
+  - src: packaging/ahhhh.png
+    dst: /usr/share/pixmaps/ahhhh.png
+    file_info:
+      mode: 0644
