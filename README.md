@@ -23,4 +23,4 @@ Browse ~1,400+ AppImages, roll a die when you're bored, drag-and-drop local `.Ap
 ### Quick One-Liner
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh](https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh) | bash
+curl -fsSL https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh | bash
