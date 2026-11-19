@@ -28,4 +28,4 @@ Browse the public AppImage catalog, drop in local `.AppImage` files from anywher
 Downloads the matching `amd64` or `arm64` release binary to `/usr/local/bin/ahhhh` and creates an **Ahhhh** launcher in your desktop app menu:
 
 ```sh
-curl -fsSL [https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh](https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh) | sh
+curl -fsSL https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh | sh
