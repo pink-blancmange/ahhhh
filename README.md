@@ -2,7 +2,7 @@
 
 # `ahhhh` // APPAPPAPP
 
-**A fast, zero-bloat Linux AppImage workbench with a punk DIY web UI.**
+**A fast, zero-bloat Linux AppImage workbench with a lovely web UI.**
 
 Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.AppImage` files, and wire them cleanly into your desktop menu—all from one single Go binary.
 
