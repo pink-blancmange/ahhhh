@@ -23,7 +23,7 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 ### Quick One-Liner
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh](https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh) | bash
+curl -fsSL https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh | bash
 ```
 
 ### AppImage, `.deb` & Archives
