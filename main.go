@@ -42,9 +42,19 @@ type AppItem struct {
 	LocalOnly       bool      `json:"local_only,omitempty"`
 }
 
+type AppDetails struct {
+	Description  string   `json:"description,omitempty"`
+	Homepage     string   `json:"homepage,omitempty"`
+	Topics       []string `json:"topics,omitempty"`
+	ReleaseTag   string   `json:"release_tag,omitempty"`
+	ReleaseNotes string   `json:"release_notes,omitempty"`
+}
+
 var (
-	cachedApps []AppItem
-	cacheMu    sync.RWMutex
+	cachedApps    []AppItem
+	cacheMu       sync.RWMutex
+	detailsCache  = make(map[string]AppDetails)
+	detailsCacheM sync.RWMutex
 )
 
 func loadFeed() ([]AppItem, error) {
@@ -81,6 +91,65 @@ func loadFeed() ([]AppItem, error) {
 	return out, nil
 }
 
+func fetchGitHubDetails(repo string) AppDetails {
+	clean := strings.Trim(strings.TrimPrefix(strings.TrimSpace(repo), "https://github.com/"), "/")
+	if clean == "" {
+		return AppDetails{}
+	}
+
+	detailsCacheM.RLock()
+	if cached, ok := detailsCache[clean]; ok {
+		detailsCacheM.RUnlock()
+		return cached
+	}
+	detailsCacheM.RUnlock()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	var out AppDetails
+
+	if resp, err := client.Get("https://api.github.com/repos/" + clean); err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var repoInfo struct {
+				Description string   `json:"description"`
+				Homepage    string   `json:"homepage"`
+				Topics      []string `json:"topics"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&repoInfo) == nil {
+				out.Description = strings.TrimSpace(repoInfo.Description)
+				out.Homepage = strings.TrimSpace(repoInfo.Homepage)
+				out.Topics = repoInfo.Topics
+			}
+		}
+	}
+
+	if resp, err := client.Get("https://api.github.com/repos/" + clean + "/releases/latest"); err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var rel struct {
+				TagName string `json:"tag_name"`
+				Body    string `json:"body"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&rel) == nil {
+				out.ReleaseTag = strings.TrimSpace(rel.TagName)
+				out.ReleaseNotes = strings.TrimSpace(rel.Body)
+			}
+		}
+	}
+
+	detailsCacheM.Lock()
+	detailsCache[clean] = out
+	detailsCacheM.Unlock()
+	return out
+}
+
+func handleAppDetails(w http.ResponseWriter, r *http.Request) {
+	gh := r.URL.Query().Get("github")
+	details := fetchGitHubDetails(gh)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(details)
+}
+
 func handleApps(w http.ResponseWriter, r *http.Request) {
 	checkUpdates := r.URL.Query().Get("check_updates") == "1"
 
@@ -101,6 +170,9 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 			apps[i].Installed = true
 			if meta, ok := readMeta(slug); ok {
 				apps[i].InstalledTag = meta.ReleaseTag
+				if apps[i].Description == "" && meta.Description != "" {
+					apps[i].Description = meta.Description
+				}
 				if checkUpdates && meta.GitHubRepo != "" {
 					if _, _, latest, err := resolveGitHubRelease(meta.GitHubRepo); err == nil && latest != "" {
 						apps[i].LatestTag = latest
@@ -120,6 +192,8 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 		}
 		name := slug
 		tag := "local"
+		desc := "Installed from a local AppImage file."
+		var links []AppLink
 		if meta, ok := readMeta(slug); ok {
 			if meta.Name != "" {
 				name = meta.Name
@@ -127,11 +201,21 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 			if meta.ReleaseTag != "" {
 				tag = meta.ReleaseTag
 			}
+			if meta.Description != "" {
+				desc = meta.Description
+			}
+			if meta.GitHubRepo != "" {
+				links = append(links, AppLink{Type: "GitHub", URL: "https://github.com/" + meta.GitHubRepo})
+			}
+			if meta.Homepage != "" {
+				links = append(links, AppLink{Type: "Home", URL: meta.Homepage})
+			}
 		}
 		apps = append([]AppItem{{
 			Name:         name,
-			Description:  "Installed from a local AppImage file.",
+			Description:  desc,
 			Categories:   []string{"Local"},
+			Links:        links,
 			Slug:         slug,
 			Installed:    true,
 			InstalledTag: tag,
@@ -407,6 +491,7 @@ func main() {
 	sub, _ := fs.Sub(webFS, "web")
 	http.Handle("/", http.FileServer(http.FS(sub)))
 	http.HandleFunc("/api/apps", handleApps)
+	http.HandleFunc("/api/app-details", handleAppDetails)
 	http.HandleFunc("/api/install", handleInstall)
 	http.HandleFunc("/api/upload-local", handleUploadLocal)
 	http.HandleFunc("/api/remove", handleRemove)

@@ -655,12 +655,13 @@
 
     .drawer {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
+      max-height: 86dvh;
+      overflow-y: auto;
       background: #141722;
       border: 1.5px solid var(--pink);
       border-radius: 12px;
       padding: 1.35rem;
-      overflow: hidden;
     }
 
     .drawer h2 {
@@ -683,7 +684,29 @@
       line-height: 1.5;
       margin: 0 0 1.2rem;
       font-size: 0.9rem;
+      white-space: pre-line;
       overflow-wrap: anywhere;
+    }
+
+    .drawer-notes {
+      margin: 0 0 1.15rem;
+      padding: 0.65rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #10131c;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.74rem;
+      color: #b7bfd2;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .drawer-notes-title {
+      color: var(--amber);
+      font-weight: 800;
+      margin-bottom: 0.3rem;
     }
 
     .drawer-foot {
@@ -831,6 +854,10 @@
       <h2 id="dName"></h2>
       <div class="cat-line" id="dCat"></div>
       <p id="dDesc"></p>
+      <div class="drawer-notes" id="dNotes" style="display:none;">
+        <div class="drawer-notes-title" id="dNotesTitle">Latest Release Notes</div>
+        <div id="dNotesBody"></div>
+      </div>
       <div class="drawer-foot">
         <span id="dStatus" style="font-family:monospace;font-size:0.78rem;"></span>
         <div class="drawer-actions" id="dActions"></div>
@@ -874,9 +901,21 @@
       'Other',
     ];
 
+    function stripHtml(raw) {
+      if (!raw) return '';
+      const doc = new DOMParser().parseFromString(String(raw), 'text/html');
+      doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      doc.querySelectorAll('p, li, div, h1, h2, h3, h4').forEach(el => {
+        el.append('\n');
+      });
+      return (doc.body.textContent || '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    }
+
     function mapCrate(app) {
       const raw = (app.categories || []).map(c => c.toLowerCase());
-      const blob = `${app.name || ''} ${app.description || ''}`.toLowerCase();
+      const blob = `${app.name || ''} ${stripHtml(app.description)}`.toLowerCase();
 
       if (raw.includes('webbrowser') || /\b(browser|firefox|chromium|vivaldi|librewolf|floorp|zen browser)\b/.test(blob)) {
         return 'Web & Browsers';
@@ -916,6 +955,12 @@
       return direct ? direct.url : '';
     }
 
+    function findGitHubURL(app) {
+      const links = app.links || [];
+      const gh = links.find(l => l.type === 'GitHub' && l.url);
+      return gh ? gh.url : '';
+    }
+
     function isInstallable(app) {
       return Boolean(app.installed || findDownloadLink(app));
     }
@@ -931,6 +976,7 @@
     let pageSize = 12;
     let droppedFile = null;
     let currentDiceApps = [];
+    let drawerToken = 0;
 
     function appKey(a) {
       return a.slug || a.name;
@@ -1085,7 +1131,7 @@
       if (!rawQuery) return true;
       const tokens = rawQuery.split(/\s+/).filter(Boolean);
       const linkText = (app.links || []).map(l => `${l.type || ''} ${l.url || ''}`).join(' ');
-      const hay = `${app.name || ''} ${app.description || ''} ${(app.categories || []).join(' ')} ${mapCrate(app)} ${linkText}`.toLowerCase();
+      const hay = `${app.name || ''} ${stripHtml(app.description)} ${(app.categories || []).join(' ')} ${mapCrate(app)} ${linkText}`.toLowerCase();
       return tokens.every(tok => {
         const expanded = SEARCH_SYNONYMS[tok] || [tok];
         return expanded.some(term => hay.includes(term));
@@ -1140,6 +1186,7 @@
       const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
       const crate = mapCrate(a);
       const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const cleanDesc = stripHtml(a.description) || 'No description provided.';
 
       let status = '';
       if (a.update_available) {
@@ -1167,7 +1214,7 @@
               <div class="name" title="${(a.name || '').replace(/"/g, '&quot;')}">${a.name}</div>
               <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
             </div>
-            <div class="desc">${a.description || 'No description provided.'}</div>
+            <div class="desc">${cleanDesc}</div>
           </div>
           <div class="foot">
             <div>${status}</div>
@@ -1217,13 +1264,22 @@
     }
 
     function openDrawer(app) {
+      const token = ++drawerToken;
       const dlUrl = findDownloadLink(app);
+      const ghUrl = findGitHubURL(app);
       const safeName = (app.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+      const cleanDesc = stripHtml(app.description) || 'No description provided.';
 
       document.getElementById('dName').textContent = app.name;
       document.getElementById('dCat').textContent = `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}`;
-      document.getElementById('dDesc').textContent = app.description || 'No description provided.';
+      document.getElementById('dDesc').textContent = cleanDesc;
+
+      const notesBox = document.getElementById('dNotes');
+      const notesTitle = document.getElementById('dNotesTitle');
+      const notesBody = document.getElementById('dNotesBody');
+      notesBox.style.display = 'none';
+      notesBody.textContent = '';
 
       const st = document.getElementById('dStatus');
       if (app.update_available) {
@@ -1250,9 +1306,34 @@
       act.innerHTML = html;
 
       document.getElementById('drawerBackdrop').classList.add('open');
+
+      if (ghUrl) {
+        fetch('/api/app-details?github=' + encodeURIComponent(ghUrl))
+          .then(r => (r.ok ? r.json() : null))
+          .then(info => {
+            if (!info || token !== drawerToken) return;
+            const ghDesc = stripHtml(info.description);
+            const currentDesc = document.getElementById('dDesc').textContent.trim();
+            if (ghDesc && (!currentDesc || ghDesc.length > currentDesc.length)) {
+              document.getElementById('dDesc').textContent = ghDesc;
+            }
+            if (Array.isArray(info.topics) && info.topics.length > 0) {
+              document.getElementById('dCat').textContent =
+                `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'} · #${info.topics.slice(0, 4).join(' #')}`;
+            }
+            const cleanNotes = stripHtml(info.release_notes);
+            if (cleanNotes) {
+              notesTitle.textContent = info.release_tag ? `Release Notes (${info.release_tag})` : 'Latest Release Notes';
+              notesBody.textContent = cleanNotes;
+              notesBox.style.display = 'block';
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     function closeDrawer() {
+      drawerToken++;
       document.getElementById('drawerBackdrop').classList.remove('open');
     }
 

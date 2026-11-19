@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,7 +28,21 @@ type InstallMeta struct {
 	Source      string `json:"source"`
 	GitHubRepo  string `json:"github_repo,omitempty"`
 	ReleaseTag  string `json:"release_tag,omitempty"`
+	Description string `json:"description,omitempty"`
+	Homepage    string `json:"homepage,omitempty"`
 	InstalledAt string `json:"installed_at"`
+}
+
+type appStreamXML struct {
+	Summary     string `xml:"summary"`
+	Description struct {
+		Paragraphs []string `xml:"p"`
+		Items      []string `xml:"ul>li"`
+	} `xml:"description"`
+	URLs []struct {
+		Type string `xml:"type,attr"`
+		Href string `xml:",chardata"`
+	} `xml:"url"`
 }
 
 func slugify(name string) string {
@@ -166,6 +181,67 @@ func extractDisplayName(squashRoot, fallback string) string {
 	return fallback
 }
 
+func extractAppDescription(squashRoot string) (desc, homepage string) {
+	xmlMatches, _ := filepath.Glob(filepath.Join(squashRoot, "usr/share/metainfo/*.xml"))
+	if len(xmlMatches) == 0 {
+		xmlMatches, _ = filepath.Glob(filepath.Join(squashRoot, "*.appdata.xml"))
+	}
+	for _, path := range xmlMatches {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		var doc appStreamXML
+		if err := xml.Unmarshal(raw, &doc); err != nil {
+			continue
+		}
+		var parts []string
+		for _, p := range doc.Description.Paragraphs {
+			if t := strings.TrimSpace(p); t != "" {
+				parts = append(parts, t)
+			}
+		}
+		for _, li := range doc.Description.Items {
+			if t := strings.TrimSpace(li); t != "" {
+				parts = append(parts, "• "+t)
+			}
+		}
+		for _, u := range doc.URLs {
+			if u.Type == "homepage" && strings.TrimSpace(u.Href) != "" {
+				homepage = strings.TrimSpace(u.Href)
+				break
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, "\n\n"), homepage
+		}
+		if s := strings.TrimSpace(doc.Summary); s != "" {
+			return s, homepage
+		}
+	}
+
+	desktopMatches, _ := filepath.Glob(filepath.Join(squashRoot, "*.desktop"))
+	if len(desktopMatches) == 0 {
+		desktopMatches, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/applications/*.desktop"))
+	}
+	for _, path := range desktopMatches {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "Comment=") {
+				if c := strings.TrimSpace(strings.TrimPrefix(trimmed, "Comment=")); c != "" {
+					return c, homepage
+				}
+			}
+		}
+	}
+
+	return "", homepage
+}
+
 func installIcon(squashRoot, slug string) string {
 	iconName := "ahhhh-" + slug
 
@@ -278,6 +354,7 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 
 	iconName := installIcon(squashRoot, slug)
 	categories := extractCategories(squashRoot)
+	description, homepage := extractAppDescription(squashRoot)
 
 	if err := os.MkdirAll(desktopDir, 0755); err != nil {
 		return fmt.Errorf("Couldn't create the app menu folder.")
@@ -288,7 +365,12 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		iconLine = fmt.Sprintf("Icon=%s\n", iconName)
 	}
 
-	desktopEntry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\nExec=%s %%U\nTryExec=%s\n%sCategories=%s\nTerminal=false\n", displayName, symlink, symlink, iconLine, categories)
+	commentLine := ""
+	if singleLine := strings.TrimSpace(strings.Split(description, "\n")[0]); singleLine != "" {
+		commentLine = fmt.Sprintf("Comment=%s\n", singleLine)
+	}
+
+	desktopEntry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\n%sExec=%s %%U\nTryExec=%s\n%sCategories=%s\nTerminal=false\n", displayName, commentLine, symlink, symlink, iconLine, categories)
 	desktopPath := filepath.Join(desktopDir, "ahhhh-"+slug+".desktop")
 	if err := os.WriteFile(desktopPath, []byte(desktopEntry), 0644); err != nil {
 		return fmt.Errorf("Couldn't add the app to your desktop menu.")
@@ -300,6 +382,8 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		Source:      source,
 		GitHubRepo:  githubRepo,
 		ReleaseTag:  releaseTag,
+		Description: description,
+		Homepage:    homepage,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	if metaBytes, err := json.MarshalIndent(meta, "", "  "); err == nil {
