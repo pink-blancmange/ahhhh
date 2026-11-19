@@ -1,10 +1,8 @@
-cd ~/ahhhh
-cat << 'EOF' > README.md
 <div align="center">
 
-# `ahhhh` // AppAppApp
+# `ahhhh` // APPAPPAPP
 
-**A fast, zero-bloat Linux AppImage workbench with a punk DIY web UI.**
+**A fast, zero-bloat Linux AppImage workbench with a lovely web UI.**
 
 Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.AppImage` files, and wire them cleanly into your desktop menu—all from one single Go binary.
 
@@ -83,8 +81,8 @@ go build -o ahhhh .
 
 ## Uninstall
 
-* **`.deb` install:** `sudo apt remove ahhhh`
-* **`install.sh` install:** `sudo rm -f /usr/local/bin/ahhhh ~/.local/share/applications/ahhhh.desktop`
+* **`.deb` run:** `sudo apt remove ahhhh`
+* **`install.sh` run:** `sudo rm -f /usr/local/bin/ahhhh ~/.local/share/applications/ahhhh.desktop`
 
 ---
 
@@ -93,5 +91,4 @@ go build -o ahhhh .
 **GPL-3.0-or-later** · [**pink-blancmange**](https://github.com/pink-blancmange)
 
 </div>
-EOF
 
