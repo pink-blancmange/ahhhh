@@ -20,12 +20,31 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Build Linux binaries
+      - name: Install nfpm
+        uses: goreleaser/setup-nfpm@v1
+
+      - name: Build Linux binaries, tar.gz, and .deb packages
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
         run: |
-          mkdir -p dist
+          VERSION="${TAG_VERSION#v}"
+          mkdir -p dist stage-amd64 stage-arm64
+
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/ahhhh-linux-amd64 .
           GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/ahhhh-linux-arm64 .
-          sha256sum dist/ahhhh-linux-* > dist/checksums.txt
+
+          cp dist/ahhhh-linux-amd64 stage-amd64/ahhhh
+          cp packaging/ahhhh.desktop stage-amd64/ahhhh.desktop
+          tar -C stage-amd64 -czf "dist/ahhhh_${VERSION}_linux_amd64.tar.gz" ahhhh ahhhh.desktop
+
+          cp dist/ahhhh-linux-arm64 stage-arm64/ahhhh
+          cp packaging/ahhhh.desktop stage-arm64/ahhhh.desktop
+          tar -C stage-arm64 -czf "dist/ahhhh_${VERSION}_linux_arm64.tar.gz" ahhhh ahhhh.desktop
+
+          VERSION="$VERSION" nfpm pkg --config packaging/nfpm-amd64.yaml --packager deb --target "dist/ahhhh_${VERSION}_amd64.deb"
+          VERSION="$VERSION" nfpm pkg --config packaging/nfpm-arm64.yaml --packager deb --target "dist/ahhhh_${VERSION}_arm64.deb"
+
+          (cd dist && sha256sum ahhhh-linux-* *.tar.gz *.deb > checksums.txt)
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
@@ -33,4 +52,8 @@ jobs:
           files: |
             dist/ahhhh-linux-amd64
             dist/ahhhh-linux-arm64
+            dist/ahhhh_*_linux_amd64.tar.gz
+            dist/ahhhh_*_linux_arm64.tar.gz
+            dist/ahhhh_*_amd64.deb
+            dist/ahhhh_*_arm64.deb
             dist/checksums.txt

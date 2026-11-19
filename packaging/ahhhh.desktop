@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Ahhhh
+Comment=DIY AppImage Workbench
+Exec=/usr/local/bin/ahhhh
+Terminal=false
+Categories=System;Utility;

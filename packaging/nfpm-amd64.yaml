@@ -1,0 +1,17 @@
+name: ahhhh
+arch: amd64
+platform: linux
+version: "${VERSION}"
+maintainer: pink-blancmange <pink-blancmange@users.noreply.github.com>
+description: DIY Linux AppImage workbench with a web UI
+homepage: https://github.com/pink-blancmange/ahhhh
+license: GPL-3.0-or-later
+contents:
+  - src: ./dist/ahhhh-linux-amd64
+    dst: /usr/local/bin/ahhhh
+    file_info:
+      mode: 0755
+  - src: ./packaging/ahhhh.desktop
+    dst: /usr/share/applications/ahhhh.desktop
+    file_info:
+      mode: 0644
