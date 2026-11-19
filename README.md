@@ -8,6 +8,8 @@ Browse the public AppImage catalog, drop in local `.AppImage` files from anywher
 
 ---
 
+<img width="1343" height="935" alt="ahhhh" src="https://github.com/user-attachments/assets/4de43170-187d-4f36-829f-c6b07561e55f" />
+
 ## Features
 
 - **Single-Binary Web UI & CLI:** Compiles to one self-contained Go binary with the web frontend embedded—no Node, Electron, or runtime dependencies.
