@@ -1,0 +1,2215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AppAppApp // ahhhh</title>
+  <style>
+    :root {
+      --bg: #0c0d11;
+      --surface: #151720;
+      --card: #161822;
+      --border: #2a2e3d;
+      --text: #f3f4f8;
+      --muted: #98a0b3;
+      --pink: #ff2a85;
+      --lime: #a3e635;
+      --cyan: #22d3ee;
+      --amber: #facc15;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(circle at 18% 12%, rgba(255, 42, 133, 0.09), transparent 40%),
+        radial-gradient(circle at 82% 18%, rgba(34, 211, 238, 0.08), transparent 42%),
+        radial-gradient(circle at 50% 85%, rgba(255, 255, 255, 0.025), transparent 55%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      margin: 0;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 0.65rem clamp(0.85rem, 2.2vw, 1.5rem) 0.65rem;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        height: auto;
+        max-height: none;
+        overflow: auto;
+      }
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.55rem;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.45rem;
+      border-bottom: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .header-mid {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-right: 0.2rem;
+      cursor: pointer;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+      font-style: italic;
+      text-shadow: 2px 2px 0 rgba(255, 42, 133, 0.55), -1px -1px 0 rgba(34, 211, 238, 0.35);
+    }
+
+    .sub {
+      font-size: 0.68rem;
+      color: #0b0b10;
+      background: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 900;
+      padding: 0.08rem 0.36rem;
+      border-radius: 3px;
+      transform: rotate(-3deg);
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    input[type="search"],
+    input[type="text"] {
+      padding: 0.36rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.84rem;
+    }
+
+    input[type="search"]:focus,
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--pink);
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    input[type="search"] {
+      width: 195px;
+    }
+
+    input[type="text"].local-name { width: 104px; }
+
+    button {
+      padding: 0.36rem 0.68rem;
+      border-radius: 6px;
+      border: 1px solid #3b4054;
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: transform 0.08s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      transform: translate(-1px, -1px);
+      box-shadow: 2px 2px 0 var(--cyan);
+    }
+
+    button:active:not(:disabled) {
+      transform: translate(0, 0);
+      box-shadow: none;
+    }
+
+    button.primary {
+      background: var(--pink);
+      border-color: var(--pink);
+      color: #fff;
+      box-shadow: 2px 2px 0 var(--cyan);
+    }
+
+    button.primary:hover:not(:disabled) {
+      background: #ff4796;
+      border-color: #ff4796;
+      color: #fff;
+    }
+
+    .toy-crate {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding: 0.28rem 0.55rem 0.32rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--cyan);
+      background:
+        repeating-linear-gradient(
+          -45deg,
+          rgba(34, 211, 238, 0.05) 0px,
+          rgba(34, 211, 238, 0.05) 6px,
+          rgba(255, 42, 133, 0.04) 6px,
+          rgba(255, 42, 133, 0.04) 12px
+        ),
+        #131621;
+      box-shadow: 3px 3px 0 var(--cyan);
+      transform: rotate(-0.8deg);
+    }
+
+    .toy-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+
+    .toy-tag .sticker {
+      background: var(--cyan);
+      color: #0b0b10;
+      font-weight: 900;
+      padding: 0.03rem 0.28rem;
+      border-radius: 3px;
+      transform: rotate(1.5deg);
+      box-shadow: 1.5px 1.5px 0 var(--pink);
+    }
+
+    .toy-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.42rem;
+    }
+
+    button.scatter-btn {
+      border-color: var(--amber);
+      color: var(--amber);
+      background: rgba(250, 204, 21, 0.1);
+      padding: 0.32rem 0.64rem;
+    }
+
+    button.scatter-btn:hover:not(:disabled) {
+      border-color: var(--amber);
+      color: #0c0d11;
+      background: var(--amber);
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    button.dice-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.22rem 0.36rem;
+      border-color: var(--lime);
+      background: rgba(163, 230, 53, 0.1);
+    }
+
+    @keyframes diceBtnWobble {
+      0%   { transform: rotate(0deg) scale(1); }
+      25%  { transform: rotate(-14deg) scale(1.08); }
+      50%  { transform: rotate(12deg) scale(1.1); }
+      75%  { transform: rotate(-8deg) scale(1.06); }
+      100% { transform: rotate(4deg) scale(1.06); }
+    }
+
+    button.dice-btn:hover:not(:disabled) {
+      border-color: var(--lime);
+      background: rgba(163, 230, 53, 0.2);
+      box-shadow: 2px 2px 0 var(--pink);
+      animation: diceBtnWobble 0.42s ease forwards;
+    }
+
+    .btn-die {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      background: linear-gradient(145deg, #ffffff 0%, #e2e8f0 100%);
+      border: 1.5px solid #0c0d11;
+      box-shadow: 1.5px 1.5px 0 var(--pink);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 2.5px;
+      gap: 1px;
+    }
+
+    .btn-die .bpip {
+      width: 3.5px;
+      height: 3.5px;
+      border-radius: 50%;
+      background: transparent;
+      margin: auto;
+    }
+
+    .btn-die .bpip.on { background: #0c0d11; }
+    .btn-die .bpip.on.hot { background: var(--pink); }
+
+    button.update {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #0b0b10;
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    button.remove {
+      background: transparent;
+      border-color: rgba(255, 42, 133, 0.65);
+      color: #ff85b8;
+    }
+
+    button.remove:hover:not(:disabled) {
+      background: rgba(255, 42, 133, 0.16);
+      border-color: var(--pink);
+      color: #fff;
+    }
+
+    button.active {
+      border-color: var(--lime);
+      color: #0b0b10;
+      background: var(--lime);
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    button:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: none; animation: none; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      max-width: 100%;
+    }
+
+    .local-drop {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding: 0.28rem 0.5rem 0.32rem;
+      border-radius: 8px;
+      border: 1.5px dashed var(--amber);
+      background: linear-gradient(135deg, rgba(255, 42, 133, 0.08), rgba(20, 22, 30, 0.96) 55%, rgba(34, 211, 238, 0.07));
+      box-shadow: 3px 3px 0 rgba(255, 42, 133, 0.35);
+      max-width: 100%;
+    }
+
+    .local-drop.dragover {
+      border-style: solid;
+      border-color: var(--lime);
+      background: rgba(163, 230, 53, 0.14);
+    }
+
+    .punk-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+
+    .punk-tag .sticker {
+      background: var(--amber);
+      color: #0b0b10;
+      font-weight: 900;
+      padding: 0.03rem 0.28rem;
+      border-radius: 3px;
+      transform: rotate(-2deg);
+      box-shadow: 1.5px 1.5px 0 var(--pink);
+    }
+
+    .local-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.32rem;
+    }
+
+    .file-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      color: var(--cyan);
+      max-width: 88px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cat-crate {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(0, 0, 0, 0.25));
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 0.38rem 0.65rem 0.42rem;
+      margin-bottom: 0.45rem;
+      flex-shrink: 0;
+    }
+
+    .cat-crate-title {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 0.26rem;
+      display: block;
+    }
+
+    .cat-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.28rem;
+    }
+
+    .cat-tab {
+      padding: 0.14rem 0.44rem;
+      border-radius: 4px 8px 4px 8px;
+      border: 1.5px solid #353b50;
+      background: var(--surface);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.66rem;
+      font-weight: 800;
+      cursor: pointer;
+      transform: rotate(var(--tab-rot, 0deg));
+      transition: transform 0.1s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    .cat-tab:hover {
+      border-color: var(--pink);
+      color: #fff;
+      transform: rotate(0deg);
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    .cat-tab.active {
+      background: var(--pink);
+      border-color: var(--pink);
+      color: #fff;
+      transform: rotate(-1deg);
+      box-shadow: 2px 2px 0 var(--cyan);
+    }
+
+    .cat-tab .cnt {
+      margin-left: 0.24rem;
+      padding: 0.01rem 0.26rem;
+      border-radius: 3px;
+      font-size: 0.58rem;
+      background: rgba(255, 255, 255, 0.09);
+      color: var(--cyan);
+    }
+
+    .cat-tab.active .cnt {
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--lime);
+    }
+
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      margin-bottom: 0.45rem;
+      flex-shrink: 0;
+    }
+
+    .meta-right {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .sort-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+    }
+
+    .sort-btn {
+      padding: 0.24rem 0.55rem;
+      font-size: 0.72rem;
+      border-color: var(--amber);
+      color: var(--amber);
+    }
+
+    .sort-btn.random-mode {
+      border-color: var(--lime);
+      color: var(--lime);
+    }
+
+    .reshuffle-btn {
+      padding: 0.24rem 0.45rem;
+      font-size: 0.74rem;
+      border-color: var(--lime);
+      color: var(--lime);
+      display: none;
+    }
+
+    .reshuffle-btn.visible {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pager {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.32rem;
+    }
+
+    .pager button {
+      padding: 0.24rem 0.52rem;
+      font-size: 0.72rem;
+    }
+
+    .pager button.next-btn {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .page-info {
+      color: var(--text);
+      padding: 0 0.2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 285px), 1fr));
+      gap: 0.85rem;
+      align-content: start;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0.2rem 0.2rem 0.5rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.88rem 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.65rem;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    .card:hover {
+      border-color: var(--pink);
+      transform: translate(-2px, -2px);
+      box-shadow: 4px 4px 0 var(--pink);
+    }
+
+    .card:nth-child(3n):hover {
+      border-color: var(--cyan);
+      box-shadow: 4px 4px 0 var(--cyan);
+    }
+
+    .card:nth-child(4n):hover {
+      border-color: var(--lime);
+      box-shadow: 4px 4px 0 var(--lime);
+    }
+
+    .name {
+      font-weight: 800;
+      font-size: 0.96rem;
+      line-height: 1.2;
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cat-badge {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--cyan);
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      border-radius: 4px;
+      padding: 0.06rem 0.4rem;
+      margin-bottom: 0.35rem;
+      cursor: pointer;
+    }
+
+    .desc {
+      color: #b4bcd0;
+      font-size: 0.8rem;
+      line-height: 1.38;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.45rem;
+      padding-top: 0.48rem;
+      border-top: 1px dashed rgba(255, 255, 255, 0.09);
+    }
+
+    .foot button {
+      padding: 0.28rem 0.6rem;
+      font-size: 0.74rem;
+    }
+
+    .actions { display: flex; gap: 0.35rem; }
+
+    .installed {
+      color: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .upd-badge {
+      color: var(--amber);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    footer {
+      margin-top: 0.45rem;
+      padding-top: 0.45rem;
+      border-top: 2px dashed var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .faq-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.24rem 0.58rem;
+      border-radius: 6px;
+      border: 1.5px solid var(--cyan);
+      background: rgba(34, 211, 238, 0.08);
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      font-weight: 900;
+      cursor: pointer;
+      transform: rotate(-1deg);
+      box-shadow: 2px 2px 0 var(--pink);
+    }
+
+    .faq-link:hover {
+      background: var(--cyan);
+      color: #0c0d11;
+      transform: rotate(0deg);
+    }
+
+    .faq-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 7, 10, 0.84);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 220;
+      padding: 1rem;
+    }
+
+    .faq-backdrop.open { display: flex; }
+
+    .faq-modal {
+      width: 100%;
+      max-width: 680px;
+      max-height: 88dvh;
+      overflow-y: auto;
+      background: #13151e;
+      border: 2px solid var(--cyan);
+      border-radius: 14px;
+      padding: 1.35rem 1.45rem;
+      box-shadow: 7px 7px 0 var(--pink);
+    }
+
+    .faq-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.85rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .faq-head h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--cyan);
+    }
+
+    .faq-head .aka {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.76rem;
+      color: var(--amber);
+      margin-top: 0.2rem;
+    }
+
+    .faq-item {
+      margin-bottom: 0.85rem;
+      padding: 0.7rem 0.85rem;
+      background: #171a26;
+      border-left: 4px solid var(--pink);
+      border-radius: 6px;
+    }
+
+    .faq-item:nth-child(even) { border-left-color: var(--lime); }
+
+    .faq-q {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 900;
+      font-size: 0.86rem;
+      color: var(--text);
+      margin-bottom: 0.28rem;
+    }
+
+    .faq-a {
+      color: #c2c9d8;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .faq-a code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--lime);
+      padding: 0.06rem 0.32rem;
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
+
+    .dice-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 7, 10, 0.84);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 180;
+      padding: 0.9rem;
+    }
+
+    .dice-backdrop.open { display: flex; }
+
+    .dice-modal {
+      width: 100%;
+      max-width: 920px;
+      max-height: 92dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #13151e;
+      border: 2px solid var(--lime);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      box-shadow: 7px 7px 0 var(--pink);
+    }
+
+    .dice-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.8rem;
+      margin-bottom: 0.8rem;
+      border-bottom: 1px dashed var(--border);
+      flex-shrink: 0;
+    }
+
+    .dice-stage {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .die {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ffffff 0%, #e5e7eb 100%);
+      color: #0c0d11;
+      border: 2px solid #0c0d11;
+      box-shadow: 3px 3px 0 var(--pink), inset 0 0 0 2px rgba(255, 255, 255, 0.8);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 9px;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    @keyframes diceTumble {
+      0%   { transform: rotate(0deg) scale(1); }
+      25%  { transform: rotate(-18deg) scale(1.12); }
+      50%  { transform: rotate(16deg) scale(0.95); }
+      75%  { transform: rotate(-12deg) scale(1.08); }
+      100% { transform: rotate(0deg) scale(1); }
+    }
+
+    .die.rolling { animation: diceTumble 0.45s ease-in-out infinite; }
+
+    .pip {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: transparent;
+      margin: auto;
+    }
+
+    .pip.on { background: #0c0d11; }
+    .pip.on.hot { background: var(--pink); }
+
+    .dice-headline {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.08rem;
+      font-weight: 900;
+      color: var(--lime);
+    }
+
+    .dice-sub {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+
+    .dice-rack {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      align-content: center;
+      justify-content: center;
+      gap: 0.9rem 1.15rem;
+      overflow: hidden;
+    }
+
+    .scatter-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 7, 10, 0.84);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      padding: clamp(0.6rem, 2vw, 1.35rem);
+    }
+
+    .scatter-modal-backdrop.open { display: flex; }
+
+    .scatter-modal {
+      width: 100%;
+      max-width: 1280px;
+      height: 88dvh;
+      max-height: 860px;
+      background: #11131a;
+      border: 2px solid var(--amber);
+      border-radius: 14px;
+      box-shadow: 8px 8px 0 rgba(255, 42, 133, 0.45);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .scatter-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: #151822;
+      flex-shrink: 0;
+    }
+
+    .scatter-title {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.84rem;
+      font-weight: 900;
+      color: var(--amber);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .scatter-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .desk {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 30% 25%, rgba(255, 255, 255, 0.045), transparent 55%),
+        radial-gradient(ellipse at 75% 70%, rgba(0, 0, 0, 0.45), transparent 65%),
+        repeating-linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.012) 0px,
+          rgba(255, 255, 255, 0.012) 2px,
+          transparent 2px,
+          transparent 18px
+        ),
+        linear-gradient(165deg, #1b1e26 0%, #13151b 55%, #0e1015 100%);
+    }
+
+    .piece {
+      position: absolute;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
+      filter:
+        drop-shadow(0 14px 14px rgba(0, 0, 0, 0.72))
+        drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9));
+    }
+
+    .piece.rack-piece {
+      position: relative;
+      transform: scale(var(--rack-scale, 1)) rotate(var(--rack-rot, 0deg));
+    }
+
+    .piece.rack-piece:hover {
+      transform: scale(calc(var(--rack-scale, 1) * 1.08)) translateY(-8px) rotate(0deg) !important;
+    }
+
+    .piece:not(.rack-piece):hover {
+      z-index: 95 !important;
+      transform: var(--hover-transform) !important;
+      filter:
+        drop-shadow(0 24px 26px rgba(0, 0, 0, 0.88))
+        drop-shadow(0 0 12px rgba(34, 211, 238, 0.25));
+    }
+
+    .floppy {
+      width: 176px;
+      height: 182px;
+      border-radius: 8px 22px 8px 8px;
+      position: relative;
+      padding: 9px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        linear-gradient(140deg, rgba(255, 255, 255, 0.11) 0%, transparent 32%),
+        linear-gradient(180deg, var(--shell-hi, #2d3240) 0%, var(--shell-lo, #151821) 100%);
+      border-top: 1.5px solid rgba(255, 255, 255, 0.22);
+      border-left: 1px solid rgba(255, 255, 255, 0.12);
+      border-right: 1.5px solid #090b0f;
+      border-bottom: 2.5px solid #08090d;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65);
+    }
+
+    .floppy::before {
+      content: "▲";
+      position: absolute;
+      top: 6px;
+      left: 9px;
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.32);
+    }
+
+    .floppy::after {
+      content: "HD";
+      position: absolute;
+      bottom: 6px;
+      left: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 8px;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.28);
+    }
+
+    .write-tab {
+      position: absolute;
+      bottom: 7px;
+      right: 9px;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      background: #0a0c10;
+      box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .shutter-well {
+      width: 106px;
+      height: 50px;
+      margin: 2px auto 0;
+      border-radius: 4px;
+      background: #0a0c11;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 5px;
+    }
+
+    .shutter-plate {
+      width: 64px;
+      height: 42px;
+      border-radius: 3px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.06) 0px,
+          rgba(255, 255, 255, 0.06) 1px,
+          transparent 1px,
+          transparent 4px
+        ),
+        linear-gradient(115deg, #9aa4b5 0%, #cfd7e6 28%, #6c7587 55%, #dce3f0 78%, #5b6373 100%);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      padding-left: 7px;
+      transition: transform 0.18s ease;
+    }
+
+    .piece:hover .shutter-plate { transform: translateX(-14px); }
+
+    .shutter-slot {
+      width: 11px;
+      height: 20px;
+      border-radius: 2px;
+      background: #0d0f15;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.95);
+    }
+
+    .paper-label {
+      background:
+        repeating-linear-gradient(
+          180deg,
+          transparent 0px,
+          transparent 17px,
+          rgba(37, 99, 235, 0.12) 17px,
+          rgba(37, 99, 235, 0.12) 18px
+        ),
+        linear-gradient(180deg, #faf7ef 0%, #efe9d8 100%);
+      color: #13161f;
+      border-radius: 3px;
+      padding: 5px 7px;
+      border-top: 7px solid var(--tape-color, #ff2a85);
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .disk-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 900;
+      font-size: 0.8rem;
+      color: #0c0d11;
+      background: var(--tape-color, #22d3ee);
+      border: 1.5px solid #13161f;
+    }
+
+    .disk-title {
+      font-family: "Comic Sans MS", "Chalkboard SE", ui-monospace, monospace;
+      font-weight: 800;
+      font-size: 0.72rem;
+      line-height: 1.15;
+      color: #11131a;
+      overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .disk-cat {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.56rem;
+      font-weight: 700;
+      color: #4b5563;
+      margin-top: 2px;
+      text-transform: uppercase;
+    }
+
+    .cassette {
+      width: 192px;
+      height: 126px;
+      border-radius: 10px;
+      padding: 8px 10px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, transparent 38%),
+        linear-gradient(180deg, var(--shell-hi, #2c3140) 0%, var(--shell-lo, #141720) 100%);
+      border-top: 1.5px solid rgba(255, 255, 255, 0.24);
+      border-left: 1px solid rgba(255, 255, 255, 0.14);
+      border-right: 1.5px solid #090b0f;
+      border-bottom: 2.5px solid #08090d;
+    }
+
+    .cassette-label {
+      background: linear-gradient(180deg, #fffdf7 0%, #f1ebd8 100%);
+      color: #11131a;
+      border-radius: 4px;
+      padding: 4px 6px;
+      border-left: 7px solid var(--tape-color, #22d3ee);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cassette-title {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      font-weight: 900;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cassette-cat {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.54rem;
+      font-weight: 800;
+      color: #4b5563;
+      text-transform: uppercase;
+    }
+
+    .tape-window {
+      height: 40px;
+      border-radius: 6px;
+      background: #0b0d12;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 13px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tape-window::before {
+      content: "";
+      position: absolute;
+      left: 30px;
+      right: 30px;
+      height: 12px;
+      border-radius: 3px;
+      background: repeating-linear-gradient(90deg, #3b2314 0px, #3b2314 2px, #52321d 2px, #52321d 4px);
+      opacity: 0.85;
+    }
+
+    .spool {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #f3f4f8;
+      border: 3px solid #1e222d;
+      position: relative;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+    }
+
+    .spool::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0b0d12;
+      box-shadow: 6px 0 0 #0b0d12, -6px 0 0 #0b0d12, 0 6px 0 #0b0d12, 0 -6px 0 #0b0d12;
+    }
+
+    @keyframes spinReel {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .piece:hover .spool { animation: spinReel 1.3s linear infinite; }
+
+    .cassette-bottom {
+      height: 14px;
+      margin: 0 15px;
+      background: #0d1016;
+      border-radius: 6px 6px 2px 2px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 15px;
+    }
+
+    .capstan { width: 5px; height: 5px; border-radius: 50%; background: #94a3b8; }
+
+    .status-flag {
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.6rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      z-index: 6;
+    }
+
+    .flag-installed { background: var(--lime); color: #0c0d11; }
+    .flag-update { background: var(--amber); color: #0c0d11; }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 250;
+      padding: 1rem;
+    }
+
+    .drawer-backdrop.open { display: flex; }
+
+    .drawer {
+      width: 100%;
+      max-width: 460px;
+      background: #141620;
+      border: 2px solid var(--pink);
+      border-radius: 12px;
+      padding: 1.35rem;
+      box-shadow: 6px 6px 0 var(--cyan);
+    }
+
+    .drawer h2 { margin: 0 0 0.35rem; font-size: 1.25rem; }
+    .drawer .cat-line {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      color: var(--cyan);
+      margin-bottom: 0.85rem;
+    }
+    .drawer p { color: #c4cad8; line-height: 1.5; margin: 0 0 1.15rem; font-size: 0.92rem; }
+    .drawer-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+    .drawer-actions { display: flex; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="brand" id="resetBrand" title="Reset filters & go to page 1">
+        <h1>AppAppApp</h1>
+        <span class="sub">ahhhh</span>
+      </div>
+      <input id="q" type="search" placeholder="Search apps, tags, browser..." />
+      <button id="installedBtn">Installed Only</button>
+      <button id="updatesBtn">Check Updates</button>
+    </div>
+
+    <div class="header-mid">
+      <div class="toy-crate">
+        <div class="toy-tag">
+          <span class="sticker">TOY CRATE</span>
+        </div>
+        <div class="toy-row">
+          <button type="button" class="dice-btn" id="openDiceBtn" title="Roll the Dice">
+            <span class="btn-die" aria-hidden="true">
+              <span class="bpip on hot"></span><span class="bpip"></span><span class="bpip on"></span>
+              <span class="bpip"></span><span class="bpip on hot"></span><span class="bpip"></span>
+              <span class="bpip on"></span><span class="bpip"></span><span class="bpip on hot"></span>
+            </span>
+          </button>
+          <button type="button" class="scatter-btn" id="openScatterBtn" title="Rummage through a pile of floppies & cassettes">Rummage</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="local-drop" id="localDrop" title="Bring your own .AppImage — pick or drop a file">
+        <div class="punk-tag">
+          <span class="sticker">DIY // LOCAL</span>
+          <span>bring your own .appimage</span>
+        </div>
+        <div class="local-row">
+          <input type="file" id="fileInput" accept=".AppImage,.appimage" hidden />
+          <button type="button" id="pickFileBtn">Pick File</button>
+          <span class="file-label" id="fileLabel">drop here</span>
+          <input type="text" class="local-name" id="localName" placeholder="Custom name" />
+          <button type="button" class="primary" id="uploadBtn">Install</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="cat-crate">
+    <span class="cat-crate-title">Crate Dividers // Dig By Category</span>
+    <div class="cat-strip" id="catStrip"></div>
+  </div>
+
+  <div class="meta-bar">
+    <div id="count">Loading catalog...</div>
+    <div class="meta-right">
+      <div class="sort-group">
+        <button type="button" class="sort-btn random-mode" id="sortBtn" title="Toggle Random or A–Z order">Sorted: Random</button>
+        <button type="button" class="reshuffle-btn visible" id="reshuffleBtn" title="Deal a fresh random order">↻</button>
+      </div>
+      <div class="pager" id="topPager"></div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <span>AppAppApp (ahhhh) · DIY AppImage Workbench</span>
+    <button type="button" class="faq-link" id="openFaqBtn">Clicky clicky FAQ FAQ</button>
+  </footer>
+
+  <!-- Clicky Clicky FAQ Pop-Up -->
+  <div class="faq-backdrop" id="faqBackdrop">
+    <div class="faq-modal">
+      <div class="faq-head">
+        <div>
+          <h2>Clicky clicky FAQ FAQ</h2>
+          <div class="aka">Ahhhh for idiots — no neckbeard jargon required</div>
+        </div>
+        <button type="button" id="closeFaqBtn">Got it</button>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">1. What actually happens when I click Install?</div>
+        <div class="faq-a">
+          It grabs the latest <code>.AppImage</code> from GitHub, asks for your desktop password once, drops the file into <code>/opt/appimages/</code>, puts a terminal shortcut in <code>/usr/local/bin/</code>, pulls out the app's icon, and sticks it straight into your normal desktop app menu.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">2. What's the yellow "DIY // LOCAL" box in the top-right?</div>
+        <div class="faq-a">
+          Downloaded an <code>.AppImage</code> file from a random website that isn't in the store? Drop it onto that box (or click <strong>Pick File</strong>), optionally type a cleaner name, and hit <strong>Install</strong>. It gets the exact same menu icon and system setup.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">3. Why does some app say "No GitHub link"?</div>
+        <div class="faq-a">
+          The public AppImage catalog lists a few older apps that only link to a website instead of a direct GitHub release download. If you grab their <code>.AppImage</code> manually, just feed it into the top-right <strong>DIY // LOCAL</strong> box.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">4. What's inside the Toy Crate?</div>
+        <div class="faq-a">
+          Pure crate-digging fun. Clicking the <strong>Dice</strong> rolls 1–6 and deals out that many random floppies &amp; cassettes from your current filter/category. Clicking <strong>Rummage</strong> tips a pile of disks across the table—click any one to inspect or install it.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">5. How do updates and uninstalls work?</div>
+        <div class="faq-a">
+          Click <strong>Check Updates</strong> to compare your installed GitHub apps against the latest releases—any outdated ones get a yellow <strong>Update</strong> button. Clicking <strong>Remove</strong> wipes the AppImage, command shortcut, icon, and menu entry cleanly.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">6. Can I run this from the terminal without opening a browser?</div>
+        <div class="faq-a">
+          Yep: <code>ahhhh list</code>, <code>ahhhh install &lt;name-or-file&gt;</code>, <code>ahhhh update</code>, and <code>ahhhh remove &lt;name&gt;</code> all work straight in your shell.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dice Roll Pop-Up Modal -->
+  <div class="dice-backdrop" id="diceBackdrop">
+    <div class="dice-modal">
+      <div class="dice-top">
+        <div class="dice-stage">
+          <div class="die" id="dieFace"></div>
+          <div>
+            <div class="dice-headline" id="diceHeadline">6 Apps</div>
+            <div class="dice-sub" id="diceSub">Pulled from the catalog</div>
+          </div>
+        </div>
+        <div class="scatter-controls">
+          <button type="button" class="dice-btn" id="rerollBtn" title="Roll Again">
+            <span class="btn-die" aria-hidden="true">
+              <span class="bpip on hot"></span><span class="bpip"></span><span class="bpip on"></span>
+              <span class="bpip"></span><span class="bpip on hot"></span><span class="bpip"></span>
+              <span class="bpip on"></span><span class="bpip"></span><span class="bpip on hot"></span>
+            </span>
+          </button>
+          <button type="button" id="closeDiceBtn">Close</button>
+        </div>
+      </div>
+      <div class="dice-rack" id="diceGrid"></div>
+    </div>
+  </div>
+
+  <!-- Rummage Pop-Up Modal -->
+  <div class="scatter-modal-backdrop" id="scatterBackdrop">
+    <div class="scatter-modal">
+      <div class="scatter-top">
+        <span class="scatter-title" id="scatterTitle">Rummaged Apps</span>
+        <div class="scatter-controls">
+          <button type="button" class="scatter-btn" id="rescatBtn">Rummage Again</button>
+          <button type="button" id="closeScatterBtn">Close</button>
+        </div>
+      </div>
+      <div class="desk" id="desk"></div>
+    </div>
+  </div>
+
+  <!-- Inspector Drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop">
+    <div class="drawer" id="drawer">
+      <h2 id="dName"></h2>
+      <div class="cat-line" id="dCat"></div>
+      <p id="dDesc"></p>
+      <div class="drawer-foot">
+        <span id="dStatus" style="font-family:monospace;font-size:0.8rem;"></span>
+        <div class="drawer-actions" id="dActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TAPE_COLORS = ['#ff2a85', '#22d3ee', '#a3e635', '#facc15', '#fb923c', '#c084fc'];
+    const SHELL_PALETTES = [
+      ['#2d3240', '#141720'],
+      ['#1e293b', '#0f172a'],
+      ['#332638', '#19111c'],
+      ['#23302c', '#101816'],
+      ['#362c22', '#1b1510'],
+    ];
+
+    const PIP_PATTERNS = {
+      1: [4],
+      2: [2, 6],
+      3: [2, 4, 6],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8],
+    };
+
+    const SEARCH_SYNONYMS = {
+      browser: ['browser', 'webbrowser', 'firefox', 'chromium', 'zen', 'floorp', 'vivaldi', 'librewolf', 'mullvad', 'ungoogled', 'waterfox', 'surf', 'falkon', 'otter'],
+      browsers: ['browser', 'webbrowser', 'firefox', 'chromium', 'zen', 'floorp', 'vivaldi', 'librewolf', 'mullvad', 'ungoogled', 'waterfox'],
+      video: ['video', 'audiovideo', 'player', 'media', 'mpv', 'vlc', 'stremio', 'jellyfin', 'yt', 'youtube'],
+      music: ['music', 'audio', 'audiovideo', 'player', 'synth', 'tracker', 'daw', 'podcast'],
+      chat: ['chat', 'instantmessaging', 'messaging', 'irc', 'matrix', 'discord', 'telegram', 'signal', 'xmpp'],
+      notes: ['notes', 'note', 'markdown', 'wiki', 'journal', 'office', 'texteditor'],
+      git: ['git', 'development', 'ide', 'code', 'github', 'gitlab'],
+      emulator: ['emulator', 'emulators', 'game', 'retro', 'nes', 'snes', 'n64', 'ps1', 'ps2', 'psp', 'rom'],
+      photo: ['photo', 'photography', 'graphics', 'image', 'raw', 'editor', 'paint', 'draw'],
+    };
+
+    const CRATE_ORDER = [
+      'Web & Browsers',
+      'Audio & Video',
+      'Dev & Code',
+      'Games',
+      'Graphics & 3D',
+      'Network & Chat',
+      'Office & Notes',
+      'System & Tools',
+      'Science & Edu',
+      'Other',
+    ];
+
+    function mapCrate(app) {
+      const raw = (app.categories || []).map(c => c.toLowerCase());
+      const blob = `${app.name || ''} ${app.description || ''}`.toLowerCase();
+
+      if (raw.includes('webbrowser') || /\b(browser|firefox|chromium|vivaldi|librewolf|floorp|zen browser)\b/.test(blob)) {
+        return 'Web & Browsers';
+      }
+      if (raw.some(c => ['audiovideo', 'audio', 'video', 'music', 'player', 'sequencer'].includes(c))) {
+        return 'Audio & Video';
+      }
+      if (raw.some(c => ['development', 'ide', 'webdevelopment'].includes(c))) {
+        return 'Dev & Code';
+      }
+      if (raw.some(c => ['game', 'emulator', 'strategygame', 'adventuregame'].includes(c))) {
+        return 'Games';
+      }
+      if (raw.some(c => ['graphics', 'photography', 'viewer'].includes(c))) {
+        return 'Graphics & 3D';
+      }
+      if (raw.some(c => ['network', 'chat', 'instantmessaging', 'videoconference', 'news', 'hamradio', 'security'].includes(c))) {
+        return 'Network & Chat';
+      }
+      if (raw.some(c => ['office', 'texteditor', 'wordprocessor'].includes(c))) {
+        return 'Office & Notes';
+      }
+      if (raw.some(c => ['system', 'utility', 'settings', 'terminalemulator', 'consoleonly', 'x-tool', 'x-utilities', 'application'].includes(c))) {
+        return 'System & Tools';
+      }
+      if (raw.some(c => ['science', 'education', 'astronomy', 'electronics', 'engineering', 'finance', 'database'].includes(c))) {
+        return 'Science & Edu';
+      }
+      return 'Other';
+    }
+
+    function findDownloadLink(app) {
+      const links = app.links || [];
+      const gh = links.find(l => l.type === 'GitHub');
+      if (gh && gh.url) return gh.url;
+      const direct = links.find(l => (l.url || '').toLowerCase().endsWith('.appimage'));
+      return direct ? direct.url : '';
+    }
+
+    function isInstallable(app) {
+      return Boolean(app.installed || findDownloadLink(app));
+    }
+
+    let apps = [];
+    let appByKey = new Map();
+    let selectedCrate = '';
+    let onlyInstalled = false;
+    let sortMode = 'random'; // 'random' | 'az'
+    let randomRank = new Map();
+    let currentPage = 1;
+    let totalPagesCache = 1;
+    let pageSize = 12;
+    let droppedFile = null;
+    let scatterKey = Math.floor(Math.random() * 1e7);
+    let currentDiceApps = [];
+
+    function appKey(a) {
+      return a.slug || a.name;
+    }
+
+    function assignRandomRanks(list) {
+      const shuffled = shuffleArray(list);
+      randomRank = new Map();
+      shuffled.forEach((a, i) => {
+        randomRank.set(appKey(a), i);
+      });
+    }
+
+    function computePageSize() {
+      const grid = document.getElementById('grid');
+      const w = grid.clientWidth || window.innerWidth;
+      const cols = Math.max(1, Math.floor((w + 14) / 299));
+      const h = grid.clientHeight;
+      if (h > 100 && window.innerWidth > 900) {
+        const rowPitch = 168;
+        const safetyMargin = 24;
+        const rows = Math.max(1, Math.floor(Math.max(0, h - safetyMargin) / rowPitch));
+        pageSize = Math.max(3, cols * rows);
+      } else {
+        const rows = window.innerHeight < 780 ? 2 : (window.innerHeight < 1020 ? 3 : 4);
+        pageSize = Math.min(32, Math.max(3, cols * rows));
+      }
+    }
+
+    function rand(n) {
+      const x = Math.sin(n * 91.3458 + scatterKey * 0.0017) * 47453.5453;
+      return x - Math.floor(x);
+    }
+
+    function shuffleArray(list) {
+      const arr = [...list];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function renderDieFace(val) {
+      const active = PIP_PATTERNS[val] || PIP_PATTERNS[1];
+      const die = document.getElementById('dieFace');
+      die.innerHTML = Array.from({ length: 9 }, (_, i) => {
+        const on = active.includes(i);
+        const hot = on && (val === 1 || val === 6);
+        return `<span class="pip ${on ? 'on' : ''} ${hot ? 'hot' : ''}"></span>`;
+      }).join('');
+    }
+
+    function buildMediaPieceElement(a, idx, inRack, scale = 1) {
+      const isTape = idx % 2 === 1;
+      const tape = TAPE_COLORS[(idx + scatterKey) % TAPE_COLORS.length];
+      const shell = SHELL_PALETTES[(idx + scatterKey) % SHELL_PALETTES.length];
+      const cat = mapCrate(a);
+
+      const el = document.createElement('div');
+      el.className = inRack ? 'piece rack-piece' : 'piece';
+      el.style.setProperty('--tape-color', tape);
+      el.style.setProperty('--shell-hi', shell[0]);
+      el.style.setProperty('--shell-lo', shell[1]);
+
+      if (inRack) {
+        const rot = (((idx % 5) - 2) * 2.5).toFixed(1);
+        el.style.setProperty('--rack-scale', String(scale));
+        el.style.setProperty('--rack-rot', `${rot}deg`);
+      } else {
+        const rot = (rand(idx * 13 + 4) - 0.5) * 48;
+        el.style.transform = `rotate(${rot.toFixed(1)}deg)`;
+        el.style.setProperty('--hover-transform', `rotate(${(rot * 0.25).toFixed(1)}deg) translateY(-8px) scale(1.06)`);
+      }
+
+      let flag = '';
+      if (a.update_available) {
+        flag = `<span class="status-flag flag-update">Update</span>`;
+      } else if (a.installed) {
+        flag = `<span class="status-flag flag-installed">Installed</span>`;
+      }
+
+      if (isTape) {
+        el.innerHTML = `
+          ${flag}
+          <div class="cassette">
+            <div class="cassette-label">
+              <div class="disk-badge" style="width:24px;height:24px;font-size:0.7rem;">${monogram(a.name)}</div>
+              <div style="min-width:0;">
+                <div class="cassette-title">${a.name}</div>
+                <div class="cassette-cat">${cat}</div>
+              </div>
+            </div>
+            <div class="tape-window">
+              <div class="spool"></div>
+              <div class="spool"></div>
+            </div>
+            <div class="cassette-bottom">
+              <div class="capstan"></div>
+              <div class="capstan"></div>
+            </div>
+          </div>
+        `;
+      } else {
+        el.innerHTML = `
+          ${flag}
+          <div class="floppy">
+            <div class="shutter-well">
+              <div class="shutter-plate"><div class="shutter-slot"></div></div>
+            </div>
+            <div class="paper-label">
+              <div class="disk-badge">${monogram(a.name)}</div>
+              <div style="min-width:0;">
+                <div class="disk-title">${a.name}</div>
+                <div class="disk-cat">${cat}</div>
+              </div>
+            </div>
+            <div class="write-tab"></div>
+          </div>
+        `;
+      }
+
+      el.addEventListener('click', () => openDrawer(a));
+      return el;
+    }
+
+    function renderDiceCards(list) {
+      const rack = document.getElementById('diceGrid');
+      rack.innerHTML = '';
+      const compact = window.innerHeight < 780 || list.length >= 5;
+      const scale = window.innerHeight < 680 ? 0.78 : (compact ? 0.88 : 1);
+      list.forEach((a, idx) => {
+        rack.appendChild(buildMediaPieceElement(a, idx, true, scale));
+      });
+    }
+
+    function rollDice() {
+      const filtered = getFilteredApps();
+      const installableFiltered = filtered.filter(isInstallable);
+      const installableAll = apps.filter(isInstallable);
+
+      const pool = installableFiltered.length >= 6
+        ? installableFiltered
+        : (installableAll.length >= 6 ? installableAll : (filtered.length > 0 ? filtered : apps));
+
+      if (pool.length === 0) return;
+
+      const finalVal = Math.floor(Math.random() * 6) + 1;
+      scatterKey = Math.floor(Math.random() * 1e7);
+      currentDiceApps = shuffleArray(pool).slice(0, Math.min(finalVal, pool.length));
+
+      const die = document.getElementById('dieFace');
+      const rerollBtn = document.getElementById('rerollBtn');
+      rerollBtn.disabled = true;
+      die.classList.add('rolling');
+      document.getElementById('diceHeadline').textContent = '...';
+      document.getElementById('diceSub').textContent = 'Pulling from the catalog';
+
+      let ticks = 0;
+      const timer = setInterval(() => {
+        ticks++;
+        renderDieFace(((ticks - 1) % 6) + 1);
+        if (ticks >= 7) {
+          clearInterval(timer);
+          die.classList.remove('rolling');
+          renderDieFace(finalVal);
+          const n = currentDiceApps.length;
+          document.getElementById('diceHeadline').textContent = `${n} ${n === 1 ? 'App' : 'Apps'}`;
+          document.getElementById('diceSub').textContent =
+            selectedCrate ? `Pulled from ${selectedCrate}` : 'Pulled from the catalog';
+          renderDiceCards(currentDiceApps);
+          rerollBtn.disabled = false;
+        }
+      }, 65);
+    }
+
+    function openDicePopup() {
+      document.getElementById('diceBackdrop').classList.add('open');
+      rollDice();
+    }
+
+    function closeDicePopup() {
+      document.getElementById('diceBackdrop').classList.remove('open');
+    }
+
+    function renderCategories() {
+      const counts = new Map(CRATE_ORDER.map(c => [c, 0]));
+      apps.forEach(a => {
+        const cr = mapCrate(a);
+        counts.set(cr, (counts.get(cr) || 0) + 1);
+      });
+
+      const strip = document.getElementById('catStrip');
+      const allBtn = `<button type="button" class="cat-tab ${selectedCrate === '' ? 'active' : ''}" style="--tab-rot:-1.2deg" data-crate="">ALL APPS<span class="cnt">${apps.length}</span></button>`;
+      const tabs = CRATE_ORDER
+        .filter(c => (counts.get(c) || 0) > 0)
+        .map((c, idx) => {
+          const rot = (((idx % 5) - 2) * 0.85).toFixed(1);
+          return `<button type="button" class="cat-tab ${selectedCrate === c ? 'active' : ''}" style="--tab-rot:${rot}deg" data-crate="${c.replace(/"/g, '&quot;')}">${c}<span class="cnt">${counts.get(c)}</span></button>`;
+        }).join('');
+
+      strip.innerHTML = allBtn + tabs;
+      strip.querySelectorAll('.cat-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedCrate = btn.dataset.crate;
+          currentPage = 1;
+          renderCategories();
+          renderGrid();
+        });
+      });
+    }
+
+    async function init(checkUpdates = false) {
+      const res = await fetch('/api/apps' + (checkUpdates ? '?check_updates=1' : ''));
+      apps = await res.json();
+      appByKey = new Map(apps.map(a => [appKey(a), a]));
+      assignRandomRanks(apps);
+      renderCategories();
+      renderGrid();
+      if (document.getElementById('scatterBackdrop').classList.contains('open')) {
+        renderScatterDesk();
+      }
+      if (document.getElementById('diceBackdrop').classList.contains('open') && currentDiceApps.length > 0) {
+        currentDiceApps = currentDiceApps.map(old => appByKey.get(appKey(old)) || old);
+        renderDiceCards(currentDiceApps);
+      }
+    }
+
+    function monogram(name) {
+      const clean = (name || 'APP').replace(/[^a-zA-Z0-9]/g, '');
+      return (clean.slice(0, 2) || 'AP').toUpperCase();
+    }
+
+    function matchesSearch(app, rawQuery) {
+      if (!rawQuery) return true;
+      const tokens = rawQuery.split(/\s+/).filter(Boolean);
+      const linkText = (app.links || []).map(l => `${l.type || ''} ${l.url || ''}`).join(' ');
+      const hay = `${app.name || ''} ${app.description || ''} ${(app.categories || []).join(' ')} ${mapCrate(app)} ${linkText}`.toLowerCase();
+
+      return tokens.every(tok => {
+        const expanded = SEARCH_SYNONYMS[tok] || [tok];
+        return expanded.some(term => hay.includes(term));
+      });
+    }
+
+    function getFilteredApps() {
+      const term = document.getElementById('q').value.trim().toLowerCase();
+      const filtered = apps.filter(a => {
+        if (onlyInstalled && !a.installed) return false;
+        if (selectedCrate && mapCrate(a) !== selectedCrate) return false;
+        return matchesSearch(a, term);
+      });
+
+      if (sortMode === 'random') {
+        return [...filtered].sort((a, b) => {
+          const ra = randomRank.get(appKey(a)) ?? 0;
+          const rb = randomRank.get(appKey(b)) ?? 0;
+          return ra - rb;
+        });
+      }
+
+      return [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    }
+
+    function syncSortButton() {
+      const btn = document.getElementById('sortBtn');
+      const reshuffleBtn = document.getElementById('reshuffleBtn');
+      if (sortMode === 'random') {
+        btn.textContent = 'Sorted: Random';
+        btn.classList.add('random-mode');
+        reshuffleBtn.classList.add('visible');
+      } else {
+        btn.textContent = 'Sorted: A–Z';
+        btn.classList.remove('random-mode');
+        reshuffleBtn.classList.remove('visible');
+      }
+    }
+
+    function goPage(p, totalPages) {
+      const targetMax = totalPages || totalPagesCache || 1;
+      currentPage = Math.max(1, Math.min(targetMax, p));
+      renderGrid();
+    }
+
+    function openByKey(key) {
+      const app = appByKey.get(key);
+      if (app) openDrawer(app);
+    }
+
+    function renderAppCardHtml(a) {
+      const dlUrl = findDownloadLink(a);
+      const key = appKey(a);
+      const safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeName = (a.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+      const crate = mapCrate(a);
+      const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+      let status = '';
+      if (a.update_available) {
+        status = `<span class="upd-badge">Update ${a.latest_tag}</span>`;
+      } else if (a.installed) {
+        status = `<span class="installed">Installed${a.installed_tag ? ' (' + a.installed_tag + ')' : ''}</span>`;
+      }
+
+      let btns = '';
+      if (a.installed) {
+        if (a.update_available && dlUrl) {
+          btns += `<button type="button" class="update" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Update</button>`;
+        }
+        btns += `<button type="button" class="remove" onclick="event.stopPropagation(); removeApp('${safeName}', this)">Remove</button>`;
+      } else if (dlUrl) {
+        btns = `<button type="button" class="primary" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Install</button>`;
+      } else {
+        btns = `<span style="color:#777;font-size:0.72rem;">No GitHub link</span>`;
+      }
+
+      return `
+        <div class="card" onclick="openByKey('${safeKey}')">
+          <div>
+            <div class="name" title="${(a.name || '').replace(/"/g, '&quot;')}">${a.name}</div>
+            <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
+            <div class="desc">${a.description || 'No description provided.'}</div>
+          </div>
+          <div class="foot">
+            <div>${status}</div>
+            <div class="actions">${btns}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGrid() {
+      syncSortButton();
+      computePageSize();
+      const matches = getFilteredApps();
+      const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
+      totalPagesCache = totalPages;
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const start = (currentPage - 1) * pageSize;
+      const pageItems = matches.slice(start, start + pageSize);
+
+      const catLabel = selectedCrate ? ` · ${selectedCrate}` : ' · All Apps';
+      document.getElementById('count').textContent = `${matches.length} apps${catLabel}`;
+
+      const pagerHtml = `
+        <button type="button" onclick="goPage(1, ${totalPages})" ${currentPage <= 1 ? 'disabled' : ''}>First</button>
+        <button type="button" onclick="goPage(${currentPage - 1}, ${totalPages})" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+        <span class="page-info">Page ${currentPage} / ${totalPages}</span>
+        <button type="button" class="next-btn" onclick="goPage(${currentPage + 1}, ${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>Next Page</button>
+        <button type="button" onclick="goPage(${totalPages}, ${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>Last</button>
+      `;
+      document.getElementById('topPager').innerHTML = pagerHtml;
+
+      const grid = document.getElementById('grid');
+      if (pageItems.length === 0) {
+        grid.innerHTML = `<div style="color:var(--muted);padding:1.5rem 0;">No matching apps found.</div>`;
+        return;
+      }
+
+      grid.innerHTML = pageItems.map(a => renderAppCardHtml(a)).join('');
+    }
+
+    function selectCrateFromCard(crate) {
+      closeDicePopup();
+      selectedCrate = selectedCrate === crate ? '' : crate;
+      currentPage = 1;
+      renderCategories();
+      renderGrid();
+    }
+
+    function openScatterPopup() {
+      scatterKey = Math.floor(Math.random() * 1e7);
+      document.getElementById('scatterBackdrop').classList.add('open');
+      renderScatterDesk();
+    }
+
+    function closeScatterPopup() {
+      document.getElementById('scatterBackdrop').classList.remove('open');
+    }
+
+    function renderScatterDesk() {
+      const poolSource = getFilteredApps();
+      const source = poolSource.length > 0 ? poolSource : apps;
+      const desk = document.getElementById('desk');
+      const deskW = Math.max(340, desk.clientWidth || 1000);
+      const deskH = Math.max(320, desk.clientHeight || 620);
+
+      const maxPieces = deskW < 700 ? 10 : (deskH < 560 ? 12 : 16);
+      const sample = shuffleArray(source).slice(0, Math.min(maxPieces, source.length));
+
+      document.getElementById('scatterTitle').textContent =
+        `Rummaged Apps (${sample.length} of ${source.length}${selectedCrate ? ' · ' + selectedCrate : ''})`;
+
+      desk.innerHTML = '';
+
+      const marginX = 28;
+      const marginY = 24;
+      const itemSpanW = 205;
+      const itemSpanH = 195;
+      const usableW = Math.max(120, deskW - marginX * 2 - itemSpanW);
+      const usableH = Math.max(100, deskH - marginY * 2 - itemSpanH);
+
+      const cols = Math.max(2, Math.min(5, Math.floor((deskW - 40) / 220)));
+      const rows = Math.max(2, Math.ceil(sample.length / cols));
+
+      sample.forEach((a, idx) => {
+        const el = buildMediaPieceElement(a, idx, false, 1);
+        const rot = (rand(idx * 13 + 4) - 0.5) * 44;
+        const z = 5 + Math.floor(rand(idx * 13 + 5) * 45);
+        el.style.zIndex = String(z);
+
+        const colIdx = idx % cols;
+        const rowIdx = Math.floor(idx / cols);
+        const cellX = cols > 1 ? colIdx / (cols - 1) : 0.5;
+        const cellY = rows > 1 ? rowIdx / (rows - 1) : 0.5;
+        const jitterX = (rand(idx * 13 + 6) - 0.5) * (usableW / cols) * 0.75;
+        const jitterY = (rand(idx * 13 + 7) - 0.5) * (usableH / rows) * 0.75;
+
+        const x = Math.max(marginX, Math.min(marginX + usableW, marginX + cellX * usableW + jitterX));
+        const y = Math.max(marginY, Math.min(marginY + usableH, marginY + cellY * usableH + jitterY));
+
+        el.style.left = x.toFixed(0) + 'px';
+        el.style.top = y.toFixed(0) + 'px';
+        el.style.transform = `rotate(${rot.toFixed(1)}deg)`;
+        el.style.setProperty('--hover-transform', `rotate(${(rot * 0.25).toFixed(1)}deg) translateY(-6px) scale(1.05)`);
+
+        desk.appendChild(el);
+      });
+    }
+
+    function openDrawer(app) {
+      const dlUrl = findDownloadLink(app);
+      const safeName = (app.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+
+      document.getElementById('dName').textContent = app.name;
+      document.getElementById('dCat').textContent = `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}`;
+      document.getElementById('dDesc').textContent = app.description || 'No description provided.';
+
+      const st = document.getElementById('dStatus');
+      if (app.update_available) {
+        st.style.color = 'var(--amber)';
+        st.textContent = `Update ${app.latest_tag}`;
+      } else if (app.installed) {
+        st.style.color = 'var(--lime)';
+        st.textContent = `Installed${app.installed_tag ? ' (' + app.installed_tag + ')' : ''}`;
+      } else {
+        st.style.color = 'var(--muted)';
+        st.textContent = dlUrl ? 'Ready to install' : 'No GitHub release link';
+      }
+
+      const act = document.getElementById('dActions');
+      let html = `<button type="button" onclick="closeDrawer()">Close</button>`;
+      if (app.installed) {
+        if (app.update_available && dlUrl) {
+          html += `<button type="button" class="update" onclick="installApp('${safeName}', '${safeUrl}', this)">Update</button>`;
+        }
+        html += `<button type="button" class="remove" onclick="removeApp('${safeName}', this)">Remove</button>`;
+      } else if (dlUrl) {
+        html += `<button type="button" class="primary" onclick="installApp('${safeName}', '${safeUrl}', this)">Install</button>`;
+      }
+      act.innerHTML = html;
+
+      document.getElementById('drawerBackdrop').classList.add('open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawerBackdrop').classList.remove('open');
+    }
+
+    async function installApp(name, url, btn) {
+      btn.disabled = true;
+      const old = btn.textContent;
+      btn.textContent = 'Working...';
+      try {
+        const res = await fetch('/api/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, url })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeDrawer();
+        await init();
+      } catch (e) {
+        alert(e.message);
+        btn.disabled = false;
+        btn.textContent = old;
+      }
+    }
+
+    async function removeApp(name, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Removing...';
+      try {
+        const res = await fetch('/api/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeDrawer();
+        await init();
+      } catch (e) {
+        alert(e.message);
+        btn.disabled = false;
+        btn.textContent = 'Remove';
+      }
+    }
+
+    function getSelectedLocalFile() {
+      return droppedFile || document.getElementById('fileInput').files[0] || null;
+    }
+
+    function setSelectedLocalFile(file) {
+      droppedFile = file || null;
+      document.getElementById('fileLabel').textContent = file ? file.name : 'drop here';
+    }
+
+    async function uploadLocal(file) {
+      if (!file) {
+        alert('Please choose or drop an .AppImage file first.');
+        return;
+      }
+      const btn = document.getElementById('uploadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Installing...';
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('name', document.getElementById('localName').value.trim());
+        const res = await fetch('/api/upload-local', { method: 'POST', body: form });
+        if (!res.ok) throw new Error(await res.text());
+        document.getElementById('fileInput').value = '';
+        document.getElementById('localName').value = '';
+        setSelectedLocalFile(null);
+        await init();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Install';
+      }
+    }
+
+    document.getElementById('sortBtn').addEventListener('click', () => {
+      if (sortMode === 'random') {
+        sortMode = 'az';
+      } else {
+        sortMode = 'random';
+        assignRandomRanks(apps);
+      }
+      currentPage = 1;
+      renderGrid();
+    });
+
+    document.getElementById('reshuffleBtn').addEventListener('click', () => {
+      assignRandomRanks(apps);
+      currentPage = 1;
+      renderGrid();
+    });
+
+    document.getElementById('q').addEventListener('input', () => {
+      currentPage = 1;
+      renderGrid();
+    });
+
+    document.getElementById('openFaqBtn').addEventListener('click', () => {
+      document.getElementById('faqBackdrop').classList.add('open');
+    });
+    document.getElementById('closeFaqBtn').addEventListener('click', () => {
+      document.getElementById('faqBackdrop').classList.remove('open');
+    });
+    document.getElementById('faqBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'faqBackdrop') document.getElementById('faqBackdrop').classList.remove('open');
+    });
+
+    document.getElementById('openDiceBtn').addEventListener('click', openDicePopup);
+    document.getElementById('rerollBtn').addEventListener('click', rollDice);
+    document.getElementById('closeDiceBtn').addEventListener('click', closeDicePopup);
+    document.getElementById('diceBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'diceBackdrop') closeDicePopup();
+    });
+
+    document.getElementById('openScatterBtn').addEventListener('click', openScatterPopup);
+    document.getElementById('closeScatterBtn').addEventListener('click', closeScatterPopup);
+    document.getElementById('rescatBtn').addEventListener('click', () => {
+      scatterKey = Math.floor(Math.random() * 1e7);
+      renderScatterDesk();
+    });
+
+    document.getElementById('scatterBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'scatterBackdrop') closeScatterPopup();
+    });
+
+    window.addEventListener('resize', () => {
+      renderGrid();
+      if (document.getElementById('diceBackdrop').classList.contains('open') && currentDiceApps.length > 0) {
+        renderDiceCards(currentDiceApps);
+      }
+      if (document.getElementById('scatterBackdrop').classList.contains('open')) {
+        renderScatterDesk();
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      const drawer = document.getElementById('drawerBackdrop');
+      const faq = document.getElementById('faqBackdrop');
+      const dice = document.getElementById('diceBackdrop');
+      const scatter = document.getElementById('scatterBackdrop');
+
+      if (e.key === 'Escape') {
+        if (drawer.classList.contains('open')) { closeDrawer(); return; }
+        if (faq.classList.contains('open')) { faq.classList.remove('open'); return; }
+        if (dice.classList.contains('open')) { closeDicePopup(); return; }
+        if (scatter.classList.contains('open')) { closeScatterPopup(); return; }
+        return;
+      }
+
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (drawer.classList.contains('open') || faq.classList.contains('open') ||
+          dice.classList.contains('open') || scatter.classList.contains('open')) return;
+
+      if (e.key === 'ArrowRight' && currentPage < totalPagesCache) {
+        goPage(currentPage + 1, totalPagesCache);
+      } else if (e.key === 'ArrowLeft' && currentPage > 1) {
+        goPage(currentPage - 1, totalPagesCache);
+      }
+    });
+
+    document.getElementById('resetBrand').addEventListener('click', () => {
+      selectedCrate = '';
+      onlyInstalled = false;
+      currentPage = 1;
+      document.getElementById('q').value = '';
+      document.getElementById('installedBtn').classList.remove('active');
+      renderCategories();
+      renderGrid();
+    });
+
+    document.getElementById('installedBtn').addEventListener('click', e => {
+      onlyInstalled = !onlyInstalled;
+      currentPage = 1;
+      e.target.classList.toggle('active', onlyInstalled);
+      renderGrid();
+    });
+
+    document.getElementById('updatesBtn').addEventListener('click', async e => {
+      e.target.disabled = true;
+      e.target.textContent = 'Checking...';
+      await init(true);
+      e.target.disabled = false;
+      e.target.textContent = 'Check Updates';
+    });
+
+    document.getElementById('pickFileBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+    document.getElementById('fileInput').addEventListener('change', e => setSelectedLocalFile(e.target.files[0] || null));
+    document.getElementById('uploadBtn').addEventListener('click', () => uploadLocal(getSelectedLocalFile()));
+
+    const dz = document.getElementById('localDrop');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault();
+      dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) setSelectedLocalFile(e.dataTransfer.files[0]);
+    });
+
+    document.getElementById('drawerBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'drawerBackdrop') closeDrawer();
+    });
+
+    init();
+  </script>
+</body>
+</html>
