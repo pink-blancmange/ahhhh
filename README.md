@@ -18,24 +18,9 @@ Browse ~1,400+ AppImages, roll a die when you're bored, drag-and-drop local `.Ap
 
 ---
 
-## Why `ahhhh`?
-
-Most Linux software centers feel like enterprise configuration panels. `ahhhh` is an opinionated local workbench built for people who actually use AppImages:
-
-* **One binary, zero runtime bloat** — Written in Go with the entire web UI embedded inside the executable. Launches on `127.0.0.1:8745` and pops straight into your browser.
-* **Proper system integration** — Installs AppImages into `/opt/appimages/`, symlinks commands into `/usr/local/bin/`, extracts bundled icons, and writes `.desktop` launchers so apps show up in your menu like native packages.
-* **Drag-and-drop local `.AppImage` files** — Drop any standalone `.AppImage` onto the target box, optionally rename it, and let `ahhhh` extract its AppStream metadata, description, and icon automatically.
-* **Rich upstream metadata** — Pulls AppStream XML descriptions, `.desktop` comments, GitHub repo topics, and latest release notes right into the inspector modal.
-* **Roll the dice** — Stuck on what to try next? Hit the die button to deal 1–6 random installable apps from the catalog (or filtered by category crate).
-* **Full CLI included** — Prefer the terminal? Every action works headless too.
-
----
-
 ## Install
 
-### Debian / Ubuntu / Linux Mint (`.deb`)
-
-Grab the latest `amd64` or `arm64` `.deb` from the [**Releases**](https://github.com/pink-blancmange/ahhhh/releases) page:
+### Quick One-Liner
 
 ```bash
-sudo dpkg -i ahhhh_*_amd64.deb
+curl -fsSL [https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh](https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh) | bash
