@@ -1,6 +1,6 @@
 <div align="center">
 
-# `ahhhh` // AppAppApp
+# `ahhhh` // APPAPPAPP
 
 **A fast, zero-bloat Linux AppImage workbench with a punk DIY web UI.**
 
@@ -78,7 +78,7 @@ ahhhh remove <app-name>           # Remove binary, icon, symlink & launcher
 ## Build from Source
 
 ```bash
-git clone [https://github.com/pink-blancmange/ahhhh.git](https://github.com/pink-blancmange/ahhhh.git)
+git clone https://github.com/pink-blancmange/ahhhh.git
 cd ahhhh
 go build -o ahhhh .
 ./ahhhh
@@ -88,9 +88,9 @@ go build -o ahhhh .
 
 ## Uninstall
 
-* **`.deb` install:** `sudo apt remove ahhhh`
-* **One-liner (`install.sh`) install:** `sudo rm -f /usr/local/bin/ahhhh && rm -f ~/.local/share/applications/ahhhh.desktop ~/.local/share/icons/hicolor/256x256/apps/ahhhh.png && gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor >/dev/null 2>&1 || true`
-* **`.AppImage` install:** Remove `/opt/appimages/ahhhh.AppImage`, `/usr/local/bin/ahhhh`, and its `.desktop`/icon files if wired into your menu.
+* For the **`.deb` run this:** `sudo apt remove ahhhh`
+* For the **One-liner (`install.sh`) run this:** `sudo rm -f /usr/local/bin/ahhhh && rm -f ~/.local/share/applications/ahhhh.desktop ~/.local/share/icons/hicolor/256x256/apps/ahhhh.png && gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor >/dev/null 2>&1 || true`
+* For the **`.AppImage` run this:** Remove `/opt/appimages/ahhhh.AppImage`, `/usr/local/bin/ahhhh`, and its `.desktop`/icon files if wired into your menu.
 
 ---
 
