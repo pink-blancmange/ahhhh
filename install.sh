@@ -53,7 +53,7 @@ Comment=DIY AppImage Workbench
 Exec=/usr/local/bin/ahhhh
 Icon=ahhhh
 Terminal=false
-Categories=System;Utility;
+Categories=Utility;
 EOF_DESKTOP
 
 gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" >/dev/null 2>&1 || true
