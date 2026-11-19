@@ -21,7 +21,7 @@ jobs:
           go-version: '1.22'
 
       - name: Install nfpm
-        uses: goreleaser/setup-nfpm@v1
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 
       - name: Build Linux binaries, tar.gz, and .deb packages
         env:
