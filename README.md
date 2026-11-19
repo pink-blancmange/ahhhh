@@ -89,7 +89,7 @@ go build -o ahhhh .
 ## Uninstall
 
 * **`.deb` install:** `sudo apt remove ahhhh`
-* **`install.sh` install:** `sudo rm -f /usr/local/bin/ahhhh ~/.local/share/applications/ahhhh.desktop`
+* **One-liner (`install.sh`) install:** `sudo rm -f /usr/local/bin/ahhhh && rm -f ~/.local/share/applications/ahhhh.desktop ~/.local/share/icons/hicolor/256x256/apps/ahhhh.png && gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor >/dev/null 2>&1 || true`
 * **`.AppImage` install:** Remove `/opt/appimages/ahhhh.AppImage`, `/usr/local/bin/ahhhh`, and its `.desktop`/icon files if wired into your menu.
 
 ---
