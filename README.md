@@ -4,7 +4,7 @@
 
 **A fast, zero-bloat Linux AppImage workbench with a punk DIY web UI.**
 
-Browse ~1,400+ AppImages, roll a die when you're bored, drag-and-drop local `.AppImage` files, and wire them cleanly into your desktop menu—all from one single Go binary.
+Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.AppImage` files, and wire them cleanly into your desktop menu—all from one single Go binary.
 
 [![Release](https://img.shields.io/github/v/release/pink-blancmange/ahhhh?style=for-the-badge&color=ff2a85&labelColor=0c0d11)](https://github.com/pink-blancmange/ahhhh/releases)
 [![License](https://img.shields.io/github/license/pink-blancmange/ahhhh?style=for-the-badge&color=a3e635&labelColor=0c0d11)](LICENSE)
@@ -23,4 +23,4 @@ Browse ~1,400+ AppImages, roll a die when you're bored, drag-and-drop local `.Ap
 ### Quick One-Liner
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh](https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh) | bash
+curl -fsSL https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh | bash
