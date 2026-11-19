@@ -1,4 +1,4 @@
-# AppAppApp (`ahhhh`)
+# APPAPPAPP (`ahhhh`)
 
 A DIY Linux AppImage workbench and manager written in Go with an embedded punk/lo-fi web UI.
 
