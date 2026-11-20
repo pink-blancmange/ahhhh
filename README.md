@@ -64,6 +64,10 @@ sudo dpkg -i ahhhh_*_amd64.deb
 
 ## Usage
 
+GUI
+Look for Ahhhh in your apps.
+
+CLI
 ```bash
 ahhhh                             # Launch the web workbench
 ahhhh list                        # List installed system-wide AppImages
