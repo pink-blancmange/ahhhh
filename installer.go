@@ -76,7 +76,7 @@ func newGitHubRequest(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.1")
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.2")
 	req.Header.Set("Accept", "application/vnd.github+json")
 	if tok := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); tok != "" {
 		req.Header.Set("Authorization", "Bearer "+tok)
@@ -397,7 +397,7 @@ func downloadFile(url, dest string) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.1")
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.2")
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -712,9 +712,9 @@ func stagePackageFromFile(stagedFile, origFilename, appName, repo, tag, desc str
 		}
 	}
 
-	// Keep display name consistent for ahhhh across AppImage, archive, and CLI/one-liner installs
-	if slug == "ahhhh" && (strings.EqualFold(strings.TrimSpace(appName), "ahhhh") || strings.TrimSpace(appName) == "") {
-		appName = "Apppp"
+	// Keep display name as Ahhhh while keeping the CLI binary and slug as ahhhh
+	if slug == "ahhhh" && (strings.EqualFold(strings.TrimSpace(appName), "ahhhh") || strings.EqualFold(strings.TrimSpace(appName), "apppp") || strings.TrimSpace(appName) == "") {
+		appName = "Ahhhh"
 	}
 
 	meta := AppMeta{

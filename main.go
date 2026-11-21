@@ -7,450 +7,190 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
 
 //go:embed web/*
 var webFS embed.FS
 
-const (
-	listenAddr = "127.0.0.1:8745"
-	feedURL    = "https://appimage.github.io/feed.json"
-)
+const listenAddr = "127.0.0.1:8745"
 
-type CatalogLink struct {
-	Type string `json:"type"`
-	URL  string `json:"url"`
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		if _, err := exec.LookPath("xdg-open"); err == nil {
+			cmd = exec.Command("xdg-open", url)
+		}
+	}
+	if cmd != nil {
+		_ = cmd.Start()
+	}
 }
 
-type CatalogApp struct {
-	Name            string        `json:"name"`
-	Slug            string        `json:"slug"`
-	Description     string        `json:"description"`
-	Categories      []string      `json:"categories"`
-	Links           []CatalogLink `json:"links"`
-	Installed       bool          `json:"installed"`
-	InstalledTag    string        `json:"installed_tag,omitempty"`
-	LatestTag       string        `json:"latest_tag,omitempty"`
-	UpdateAvailable bool          `json:"update_available"`
-	Kind            string        `json:"kind,omitempty"`
-	AssetName       string        `json:"asset_name,omitempty"`
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
-type FeedPayload struct {
-	Items []struct {
-		Name        string        `json:"name"`
-		Description string        `json:"description"`
-		Categories  []string      `json:"categories"`
-		Links       []CatalogLink `json:"links"`
-	} `json:"items"`
-}
-
-var (
-	catalogMu    sync.RWMutex
-	catalogCache []CatalogApp
-	releaseMu    sync.RWMutex
-	latestTags   = make(map[string]string)
-)
-
-func loadCatalog() error {
-	client := &http.Client{Timeout: 25 * time.Second}
-	resp, err := client.Get(feedURL)
+func handleFeed(w http.ResponseWriter, r *http.Request) {
+	client := &http.Client{Timeout: 20 * time.Second}
+	req, err := http.NewRequest("GET", "https://appimage.github.io/feed.json", nil)
 	if err != nil {
-		return err
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error(), "items": []any{}})
+		return
+	}
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.2")
+	resp, err := client.Do(req)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"error": err.Error(), "items": []any{}})
+		return
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("catalog HTTP %d", resp.StatusCode)
-	}
-
-	var payload FeedPayload
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return err
-	}
-
-	items := make([]CatalogApp, 0, len(payload.Items))
-	for _, it := range payload.Items {
-		if strings.TrimSpace(it.Name) == "" {
-			continue
-		}
-		items = append(items, CatalogApp{
-			Name:        it.Name,
-			Slug:        slugify(it.Name),
-			Description: it.Description,
-			Categories:  it.Categories,
-			Links:       it.Links,
-		})
-	}
-
-	catalogMu.Lock()
-	catalogCache = items
-	catalogMu.Unlock()
-	return nil
-}
-
-func checkUpdatesForInstalled() {
-	installed := listInstalledMeta()
-	if len(installed) == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"error": fmt.Sprintf("feed HTTP %d", resp.StatusCode), "items": []any{}})
 		return
 	}
 
-	catalogMu.RLock()
-	catBySlug := make(map[string]CatalogApp, len(catalogCache))
-	for _, c := range catalogCache {
-		catBySlug[c.Slug] = c
-	}
-	catalogMu.RUnlock()
-
-	for slug, meta := range installed {
-		repo := meta.GitHubRepo
-		if repo == "" {
-			if c, ok := catBySlug[slug]; ok {
-				for _, l := range c.Links {
-					if r := parseGitHubRepo(l.URL); r != "" {
-						repo = r
-						break
-					}
-				}
-			}
-		}
-		if repo == "" {
-			continue
-		}
-
-		rel, err := fetchLatestGitHubRelease(repo)
-		if err == nil && rel != nil && rel.TagName != "" {
-			releaseMu.Lock()
-			latestTags[slug] = rel.TagName
-			releaseMu.Unlock()
-		}
-		time.Sleep(400 * time.Millisecond)
-	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_, _ = io.Copy(w, resp.Body)
 }
 
-func buildMergedApps() []CatalogApp {
-	installed := listInstalledMeta()
-
-	catalogMu.RLock()
-	base := make([]CatalogApp, len(catalogCache))
-	copy(base, catalogCache)
-	catalogMu.RUnlock()
-
-	releaseMu.RLock()
-	tagsSnap := make(map[string]string, len(latestTags))
-	for k, v := range latestTags {
-		tagsSnap[k] = v
+func handleInstalled(w http.ResponseWriter, r *http.Request) {
+	metaMap := listInstalledMeta()
+	apps := make([]AppMeta, 0, len(metaMap))
+	for _, m := range metaMap {
+		apps = append(apps, m)
 	}
-	releaseMu.RUnlock()
-
-	seenSlugs := make(map[string]bool, len(base))
-	for i := range base {
-		slug := base[i].Slug
-		seenSlugs[slug] = true
-		if meta, ok := installed[slug]; ok {
-			base[i].Installed = true
-			base[i].InstalledTag = meta.Tag
-			base[i].Kind = meta.Kind
-			base[i].AssetName = meta.AssetName
-			if meta.GitHubRepo != "" {
-				hasGH := false
-				for _, l := range base[i].Links {
-					if parseGitHubRepo(l.URL) != "" {
-						hasGH = true
-						break
-					}
-				}
-				if !hasGH {
-					base[i].Links = append(base[i].Links, CatalogLink{
-						Type: "GitHub",
-						URL:  "https://github.com/" + meta.GitHubRepo,
-					})
-				}
-			}
-			if lt, ok := tagsSnap[slug]; ok && lt != "" {
-				base[i].LatestTag = lt
-				if meta.Tag != "" && compareVersionTags(meta.Tag, lt) > 0 {
-					base[i].UpdateAvailable = true
-				}
-			}
-		}
-	}
-
-	// Append installed apps that aren't in AppImageHub (e.g., direct GitHub Release installs or local files)
-	for slug, meta := range installed {
-		if seenSlugs[slug] {
-			continue
-		}
-		var links []CatalogLink
-		if meta.GitHubRepo != "" {
-			links = append(links, CatalogLink{
-				Type: "GitHub",
-				URL:  "https://github.com/" + meta.GitHubRepo,
-			})
-		}
-		desc := meta.Description
-		if desc == "" {
-			if meta.GitHubRepo != "" {
-				desc = fmt.Sprintf("Installed from GitHub release (%s)", meta.AssetName)
-			} else {
-				desc = fmt.Sprintf("Installed from local file (%s)", meta.AssetName)
-			}
-		}
-		app := CatalogApp{
-			Name:         meta.Name,
-			Slug:         slug,
-			Description:  desc,
-			Categories:   []string{"GitHub Release"},
-			Links:        links,
-			Installed:    true,
-			InstalledTag: meta.Tag,
-			Kind:         meta.Kind,
-			AssetName:    meta.AssetName,
-		}
-		if lt, ok := tagsSnap[slug]; ok && lt != "" {
-			app.LatestTag = lt
-			if meta.Tag != "" && compareVersionTags(meta.Tag, lt) > 0 {
-				app.UpdateAvailable = true
-			}
-		}
-		base = append(base, app)
-	}
-
-	return base
+	writeJSON(w, http.StatusOK, map[string]any{"apps": apps})
 }
 
-func openBrowser(url string) {
-	_ = exec.Command("xdg-open", url).Start()
+func handleInspectGitHub(w http.ResponseWriter, r *http.Request) {
+	repo := strings.TrimSpace(r.URL.Query().Get("repo"))
+	name := strings.TrimSpace(r.URL.Query().Get("name"))
+	target, err := resolveGitHubTarget(repo, name)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, target)
+}
+
+func handleInstallURL(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "POST required"})
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	if err := installFromURL(body.Name, body.URL); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func handleInstallLocal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "POST required"})
+		return
+	}
+	if err := r.ParseMultipartForm(1024 << 20); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "missing file"})
+		return
+	}
+	defer file.Close()
+
+	customName := strings.TrimSpace(r.FormValue("name"))
+	tmp, err := os.CreateTemp("", "ahhhh-local-*")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := io.Copy(tmp, file); err != nil {
+		tmp.Close()
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	tmp.Close()
+
+	if err := installLocalFile(tmpPath, filepath.Base(header.Filename), customName); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func handleRemove(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "POST required"})
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	target := strings.TrimSpace(body.Slug)
+	if target == "" {
+		target = strings.TrimSpace(body.Name)
+	}
+	if err := removeInstalledApp(target); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "remove":
-			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "Usage: ahhhh remove <app-name>")
-				os.Exit(1)
-			}
-			if err := removeInstalledApp(os.Args[2]); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			fmt.Printf("Removed %s.\n", os.Args[2])
-			return
-		case "install":
-			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "Usage: ahhhh install <owner/repo-or-url> [name]")
-				os.Exit(1)
-			}
-			name := ""
-			if len(os.Args) >= 4 {
-				name = os.Args[3]
-			}
-			if err := installFromURL(name, os.Args[2]); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			fmt.Println("Installed successfully.")
-			return
-		}
+	subFS, err := fs.Sub(webFS, "web")
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	// If already running on 8745, just open the browser tab and exit cleanly
-	if conn, err := net.DialTimeout("tcp", listenAddr, 300*time.Millisecond); err == nil {
-		conn.Close()
-		openBrowser("http://" + listenAddr)
-		return
-	}
-
-	if err := loadCatalog(); err != nil {
-		log.Printf("warning: initial catalog load failed: %v", err)
-	}
-
-	go func() {
-		checkUpdatesForInstalled()
-		ticker := time.NewTicker(30 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			checkUpdatesForInstalled()
-		}
-	}()
 
 	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.FS(subFS)))
+	mux.HandleFunc("/api/feed", handleFeed)
+	mux.HandleFunc("/api/installed", handleInstalled)
+	mux.HandleFunc("/api/github/inspect", handleInspectGitHub)
+	mux.HandleFunc("/api/install/url", handleInstallURL)
+	mux.HandleFunc("/api/install/local", handleInstallLocal)
+	mux.HandleFunc("/api/remove", handleRemove)
 
-	webSub, err := fs.Sub(webFS, "web")
-	if err != nil {
+	url := "http://" + listenAddr
+	log.Printf("Ahhhh (ahhhh) listening on %s", url)
+	go openBrowser(url)
+
+	if err := http.ListenAndServe(listenAddr, mux); err != nil {
 		log.Fatal(err)
 	}
-	mux.Handle("/", http.FileServer(http.FS(webSub)))
-
-	mux.HandleFunc("/api/apps", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("check_updates") == "1" {
-			checkUpdatesForInstalled()
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(buildMergedApps())
-	})
-
-	mux.HandleFunc("/api/github-resolve", func(w http.ResponseWriter, r *http.Request) {
-		repo := r.URL.Query().Get("repo")
-		name := r.URL.Query().Get("name")
-		res, err := resolveGitHubTarget(repo, name)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(res)
-	})
-
-	mux.HandleFunc("/api/app-details", func(w http.ResponseWriter, r *http.Request) {
-		repo := parseGitHubRepo(r.URL.Query().Get("github"))
-		if repo == "" {
-			http.Error(w, "invalid github repo", http.StatusBadRequest)
-			return
-		}
-		info, _ := fetchGitHubRepoInfo(repo)
-		rel, _ := fetchLatestGitHubRelease(repo)
-		out := map[string]any{}
-		if info != nil {
-			out["description"] = info.Description
-			out["topics"] = info.Topics
-			out["stars"] = info.Stars
-		}
-		if rel != nil {
-			out["release_tag"] = rel.TagName
-			out["release_notes"] = rel.Body
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(out)
-	})
-
-	mux.HandleFunc("/api/install", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if err := installFromURL(req.Name, req.URL); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	mux.HandleFunc("/api/update-all", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			Items []struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"items"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		var stages []string
-		for _, it := range req.Items {
-			sd, err := prepareStagedInstallFromURL(it.Name, it.URL)
-			if err != nil {
-				for _, prev := range stages {
-					_ = os.RemoveAll(prev)
-				}
-				http.Error(w, fmt.Sprintf("%s: %v", it.Name, err), http.StatusInternalServerError)
-				return
-			}
-			stages = append(stages, sd)
-		}
-		if err := commitStagedDirs(stages); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	mux.HandleFunc("/api/remove", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			Name string `json:"name"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if err := removeInstalledApp(req.Name); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	mux.HandleFunc("/api/upload-local", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if err := r.ParseMultipartForm(1024 << 20); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-
-		tmp, err := os.CreateTemp("", "ahhhh-upload-*"+filepath.Ext(header.Filename))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tmpPath := tmp.Name()
-		_, copyErr := io.Copy(tmp, file)
-		tmp.Close()
-		defer os.Remove(tmpPath)
-		if copyErr != nil {
-			http.Error(w, copyErr.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		customName := r.FormValue("name")
-		if err := installLocalFile(tmpPath, header.Filename, customName); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	ln, err := net.Listen("tcp", listenAddr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("ahhhh running at http://%s", listenAddr)
-	go func() {
-		time.Sleep(250 * time.Millisecond)
-		openBrowser("http://" + listenAddr)
-	}()
-	log.Fatal(http.Serve(ln, mux))
 }
