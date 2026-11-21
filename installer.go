@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -257,7 +258,7 @@ func extractAppDescription(squashRoot string) (desc, homepage string) {
 	return "", homepage
 }
 
-func installIcon(squashRoot, slug string) string {
+func installIcon(squashRoot, slug, source string) string {
 	iconName := "ahhhh-" + slug
 
 	svgs, _ := filepath.Glob(filepath.Join(squashRoot, "*.svg"))
@@ -276,6 +277,32 @@ func installIcon(squashRoot, slug string) string {
 	pngs, _ := filepath.Glob(filepath.Join(squashRoot, "*.png"))
 	if len(pngs) == 0 {
 		pngs, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor/256x256/apps/*.png"))
+	}
+	if len(pngs) == 0 && slug == "ahhhh" {
+		candidates := []string{
+			filepath.Join(squashRoot, "packaging/ahhhh.png"),
+			"packaging/ahhhh.png",
+		}
+		if source != "" && !strings.HasPrefix(source, "http://") && !strings.HasPrefix(source, "https://") {
+			sourceDir := filepath.Dir(source)
+			candidates = append(candidates,
+				filepath.Join(sourceDir, "packaging/ahhhh.png"),
+				filepath.Join(filepath.Dir(sourceDir), "packaging/ahhhh.png"),
+			)
+		}
+		if exe, err := os.Executable(); err == nil {
+			exeDir := filepath.Dir(exe)
+			candidates = append(candidates,
+				filepath.Join(exeDir, "packaging/ahhhh.png"),
+				filepath.Join(filepath.Dir(exeDir), "packaging/ahhhh.png"),
+			)
+		}
+		for _, cand := range candidates {
+			if info, err := os.Stat(cand); err == nil && !info.IsDir() {
+				pngs = append(pngs, cand)
+				break
+			}
+		}
 	}
 	if len(pngs) > 0 {
 		destDir := filepath.Join(iconBaseDir, "256x256/apps")
@@ -342,7 +369,10 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		return fmt.Errorf("Couldn't make the app executable.")
 	}
 
-	extractCmd := exec.Command(tmpFile, "--appimage-extract")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	extractCmd := exec.CommandContext(ctx, tmpFile, "--appimage-extract")
 	extractCmd.Dir = tmpDir
 	extractCmd.Env = filteredChildEnv()
 	_ = extractCmd.Run()
@@ -361,7 +391,7 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 
 	if slug == "ahhhh" || strings.HasPrefix(slug, "ahhhh-") || strings.HasPrefix(slug, "ahhhh_") {
 		slug = "ahhhh"
-		displayName = "AppAppApp"
+		displayName = "ahhhh"
 		if githubRepo == "" {
 			githubRepo = selfRepo
 		}
@@ -395,7 +425,7 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		return fmt.Errorf("Couldn't add a command shortcut in /usr/local/bin.")
 	}
 
-	iconName := installIcon(squashRoot, slug)
+	iconName := installIcon(squashRoot, slug, source)
 	categories := extractCategories(squashRoot)
 	description, homepage := extractAppDescription(squashRoot)
 	if slug == "ahhhh" && description == "" {

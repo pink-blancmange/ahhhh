@@ -360,7 +360,7 @@ func selfInstallSystemWide() error {
 		source = exe
 	}
 	tag := detectVersionTag(filepath.Base(source), os.Getenv("ARGV0"))
-	return runPrivileged("--sys-install", "AppAppApp", source, selfRepo, tag)
+	return runPrivileged("--sys-install", "ahhhh", source, selfRepo, tag)
 }
 
 func handleInstall(w http.ResponseWriter, r *http.Request) {
@@ -632,7 +632,7 @@ func main() {
 			if err := selfInstallSystemWide(); err != nil {
 				log.Fatal(err)
 			}
-			fmt.Println("Installed AppAppApp system-wide.")
+			fmt.Println("Installed ahhhh system-wide.")
 			return
 
 		case "--sys-install":
