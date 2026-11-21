@@ -408,20 +408,23 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 	}
 
 	destBin := filepath.Join(appDir, slug+".AppImage")
-	if err := copyFileSimple(tmpFile, destBin, 0755); err != nil {
-		_ = os.RemoveAll(appDir)
+	stageBin := destBin + ".new"
+	if err := copyFileSimple(tmpFile, stageBin, 0755); err != nil {
+		_ = os.Remove(stageBin)
+		return fmt.Errorf("Couldn't stage the app in /opt/appimages.")
+	}
+	if err := os.Rename(stageBin, destBin); err != nil {
+		_ = os.Remove(stageBin)
 		return fmt.Errorf("Couldn't move the app into /opt/appimages.")
 	}
 
 	if err := os.MkdirAll(binDir, 0755); err != nil {
-		_ = os.RemoveAll(appDir)
 		return fmt.Errorf("Couldn't create /usr/local/bin.")
 	}
 
 	symlink := filepath.Join(binDir, slug)
 	_ = os.Remove(symlink)
 	if err := os.Symlink(destBin, symlink); err != nil {
-		_ = os.RemoveAll(appDir)
 		return fmt.Errorf("Couldn't add a command shortcut in /usr/local/bin.")
 	}
 
