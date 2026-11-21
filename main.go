@@ -324,7 +324,7 @@ func runPrivileged(args ...string) error {
 
 	execPath := self
 	if strings.Contains(self, "/.mount_") || os.Getenv("APPIMAGE") != "" {
-		tmpBin, err := os.CreateTemp("", "ahhhh-priv-*")
+		tmpBin, err := os.CreateTemp("/var/tmp", "ahhhh-priv-*")
 		if err != nil {
 			return fmt.Errorf("Couldn't prepare privileged helper binary.")
 		}
