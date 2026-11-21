@@ -618,6 +618,18 @@
       color: var(--cyan);
     }
 
+    .site-link {
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .site-link:hover {
+      text-decoration: underline;
+    }
+
     .foot {
       display: flex;
       flex-wrap: wrap;
@@ -1203,21 +1215,40 @@
       return direct ? direct.url : '';
     }
 
-    function findGitHubURL(app) {
+    function findWebsiteLink(app) {
       const links = app.links || [];
-      const gh = links.find(l => l.type === 'GitHub' && l.url);
-      return gh ? gh.url : '';
+      const preferred = links.find(l => {
+        const u = (l.url || '').trim();
+        return /^https?:\/\//i.test(u) && !/github\.com/i.test(u) && (l.type === 'Home' || l.type === 'Website' || !u.toLowerCase().endsWith('.appimage'));
+      });
+      if (preferred) return preferred.url.trim();
+      const anyHttp = links.find(l => /^https?:\/\//i.test((l.url || '').trim()));
+      return anyHttp ? anyHttp.url.trim() : '';
     }
 
     function extractGitHubSlug(app) {
-      const gh = findGitHubURL(app);
-      if (!gh) return '';
-      return gh
-        .replace(/^https?:\/\/github\.com\//i, '')
-        .replace(/\/+$/, '')
-        .split('/')
-        .slice(0, 2)
-        .join('/');
+      const links = app.links || [];
+      for (const l of links) {
+        const raw = (l.url || '').trim();
+        if (!raw) continue;
+        if (l.type === 'GitHub' || /^https?:\/\/(www\.)?github\.com\//i.test(raw) || /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(raw)) {
+          const slug = raw
+            .replace(/^https?:\/\/(www\.)?github\.com\//i, '')
+            .replace(/^\/+|\/+$/g, '')
+            .split('/')
+            .slice(0, 2)
+            .join('/');
+          if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(slug)) {
+            return slug;
+          }
+        }
+      }
+      return '';
+    }
+
+    function findGitHubURL(app) {
+      const slug = extractGitHubSlug(app);
+      return slug ? `https://github.com/${slug}` : '';
     }
 
     function isInstallable(app) {
@@ -1380,7 +1411,7 @@
       const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const cleanDesc = stripHtml(a.description) || 'No description provided.';
       const repoHtml = ghSlug
-        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">GH · ${ghSlug}</a>`
+        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">${ghSlug}</a>`
         : '';
       const tagText = a.installed_tag && a.latest_tag
         ? `${a.installed_tag} → ${a.latest_tag}`
@@ -1388,7 +1419,7 @@
 
       const actionBtn = dlUrl
         ? `<button type="button" class="update" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Update Now</button>`
-        : `<span style="color:var(--muted);font-size:0.72rem;">No link</span>`;
+        : `<span style="color:var(--muted);font-size:0.72rem;">Website only</span>`;
 
       return `
         <div class="card" onclick="openByKey('${safeKey}')">
@@ -1619,6 +1650,7 @@
 
     function renderAppCardHtml(a) {
       const dlUrl = findDownloadLink(a);
+      const siteUrl = findWebsiteLink(a);
       const ghUrl = findGitHubURL(a);
       const ghSlug = extractGitHubSlug(a);
       const key = appKey(a);
@@ -1629,7 +1661,7 @@
       const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const cleanDesc = stripHtml(a.description) || 'No description provided.';
       const repoHtml = ghSlug
-        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">GH · ${ghSlug}</a>`
+        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">${ghSlug}</a>`
         : '';
 
       let status = '';
@@ -1647,6 +1679,8 @@
         btns += `<button type="button" class="remove" onclick="event.stopPropagation(); removeApp('${safeName}', this)">Remove</button>`;
       } else if (dlUrl) {
         btns = `<button type="button" class="primary" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Install</button>`;
+      } else if (siteUrl) {
+        btns = `<a class="site-link" href="${siteUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Project Site ↗</a>`;
       } else {
         btns = `<span style="color:var(--muted);font-size:0.72rem;">Website only</span>`;
       }
@@ -1712,6 +1746,7 @@
     function openDrawer(app) {
       const token = ++drawerToken;
       const dlUrl = findDownloadLink(app);
+      const siteUrl = findWebsiteLink(app);
       const ghUrl = findGitHubURL(app);
       const ghSlug = extractGitHubSlug(app);
       const safeName = (app.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -1740,7 +1775,7 @@
         st.textContent = `Installed${app.installed_tag ? ' (' + app.installed_tag + ')' : ''}`;
       } else {
         st.style.color = 'var(--muted)';
-        st.textContent = dlUrl ? 'Ready to install' : 'Download manually from project site';
+        st.textContent = dlUrl ? 'Ready to install' : (siteUrl ? 'Website only' : 'No download link listed');
       }
 
       const act = document.getElementById('dActions');
@@ -1752,6 +1787,8 @@
         html += `<button type="button" class="remove" onclick="removeApp('${safeName}', this)">Remove</button>`;
       } else if (dlUrl) {
         html += `<button type="button" class="primary" onclick="installApp('${safeName}', '${safeUrl}', this)">Install</button>`;
+      } else if (siteUrl) {
+        html += `<a class="site-link" href="${siteUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="padding:0.4rem 0.5rem;">Project Site ↗</a>`;
       }
       act.innerHTML = html;
 
