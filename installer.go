@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -52,6 +53,15 @@ var semverTagRe = regexp.MustCompile(`v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`)
 func slugify(name string) string {
 	re := regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 	return strings.ToLower(strings.Trim(re.ReplaceAllString(name, "-"), "-"))
+}
+
+func normalizeTag(tag string) string {
+	return strings.TrimPrefix(strings.TrimSpace(tag), "v")
+}
+
+func tagsEqual(a, b string) bool {
+	na, nb := normalizeTag(a), normalizeTag(b)
+	return na != "" && nb != "" && na == nb
 }
 
 func detectVersionTag(candidates ...string) string {
@@ -151,12 +161,16 @@ func resolveGitHubRelease(repoOrURL string) (downloadURL, cleanRepo, tag string,
 	return "", "", "", fmt.Errorf("This app doesn't publish an AppImage file in its latest release.")
 }
 
-func extractCategories(squashRoot string) string {
+func findDesktopFiles(squashRoot string) []string {
 	matches, _ := filepath.Glob(filepath.Join(squashRoot, "*.desktop"))
 	if len(matches) == 0 {
 		matches, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/applications/*.desktop"))
 	}
-	for _, path := range matches {
+	return matches
+}
+
+func extractCategories(squashRoot string) string {
+	for _, path := range findDesktopFiles(squashRoot) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -174,12 +188,27 @@ func extractCategories(squashRoot string) string {
 	return "Utility;"
 }
 
-func extractDisplayName(squashRoot, fallback string) string {
-	matches, _ := filepath.Glob(filepath.Join(squashRoot, "*.desktop"))
-	if len(matches) == 0 {
-		matches, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/applications/*.desktop"))
+func extractStartupWMClass(squashRoot string) string {
+	for _, path := range findDesktopFiles(squashRoot) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "StartupWMClass=") {
+				wmClass := strings.TrimSpace(strings.TrimPrefix(trimmed, "StartupWMClass="))
+				if wmClass != "" {
+					return wmClass
+				}
+			}
+		}
 	}
-	for _, path := range matches {
+	return ""
+}
+
+func extractDisplayName(squashRoot, fallback string) string {
+	for _, path := range findDesktopFiles(squashRoot) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -236,11 +265,7 @@ func extractAppDescription(squashRoot string) (desc, homepage string) {
 		}
 	}
 
-	desktopMatches, _ := filepath.Glob(filepath.Join(squashRoot, "*.desktop"))
-	if len(desktopMatches) == 0 {
-		desktopMatches, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/applications/*.desktop"))
-	}
-	for _, path := range desktopMatches {
+	for _, path := range findDesktopFiles(squashRoot) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -258,6 +283,29 @@ func extractAppDescription(squashRoot string) (desc, homepage string) {
 	return "", homepage
 }
 
+func pickLargestFile(paths []string) string {
+	if len(paths) == 0 {
+		return ""
+	}
+	type candidate struct {
+		path string
+		size int64
+	}
+	var list []candidate
+	for _, p := range paths {
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			list = append(list, candidate{path: p, size: info.Size()})
+		}
+	}
+	if len(list) == 0 {
+		return ""
+	}
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].size > list[j].size
+	})
+	return list[0].path
+}
+
 func installIcon(squashRoot, slug, source string) string {
 	iconName := "ahhhh-" + slug
 
@@ -265,11 +313,11 @@ func installIcon(squashRoot, slug, source string) string {
 	if len(svgs) == 0 {
 		svgs, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor/scalable/apps/*.svg"))
 	}
-	if len(svgs) > 0 {
+	if bestSVG := pickLargestFile(svgs); bestSVG != "" {
 		destDir := filepath.Join(iconBaseDir, "scalable/apps")
 		_ = os.MkdirAll(destDir, 0755)
 		dest := filepath.Join(destDir, iconName+".svg")
-		if err := copyFileSimple(svgs[0], dest, 0644); err == nil {
+		if err := copyFileSimple(bestSVG, dest, 0644); err == nil {
 			return iconName
 		}
 	}
@@ -277,6 +325,21 @@ func installIcon(squashRoot, slug, source string) string {
 	pngs, _ := filepath.Glob(filepath.Join(squashRoot, "*.png"))
 	if len(pngs) == 0 {
 		pngs, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor/256x256/apps/*.png"))
+	}
+	if len(pngs) == 0 {
+		for _, size := range []string{"512x512", "128x128", "64x64", "48x48"} {
+			sized, _ := filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor", size, "apps/*.png"))
+			if len(sized) > 0 {
+				pngs = append(pngs, sized...)
+				break
+			}
+		}
+	}
+	if len(pngs) == 0 {
+		dirIcon := filepath.Join(squashRoot, ".DirIcon")
+		if info, err := os.Stat(dirIcon); err == nil && !info.IsDir() {
+			pngs = append(pngs, dirIcon)
+		}
 	}
 	if len(pngs) == 0 && slug == "ahhhh" {
 		candidates := []string{
@@ -304,11 +367,11 @@ func installIcon(squashRoot, slug, source string) string {
 			}
 		}
 	}
-	if len(pngs) > 0 {
+	if bestPNG := pickLargestFile(pngs); bestPNG != "" {
 		destDir := filepath.Join(iconBaseDir, "256x256/apps")
 		_ = os.MkdirAll(destDir, 0755)
 		dest := filepath.Join(destDir, iconName+".png")
-		if err := copyFileSimple(pngs[0], dest, 0644); err == nil {
+		if err := copyFileSimple(bestPNG, dest, 0644); err == nil {
 			return iconName
 		}
 	}
@@ -369,7 +432,7 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		return fmt.Errorf("Couldn't make the app executable.")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
 
 	extractCmd := exec.CommandContext(ctx, tmpFile, "--appimage-extract")
@@ -433,6 +496,7 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 	if slug == "ahhhh" && (categories == "" || categories == "Utility;") {
 		categories = "System;Utility;"
 	}
+	wmClass := extractStartupWMClass(squashRoot)
 	description, homepage := extractAppDescription(squashRoot)
 	if slug == "ahhhh" && description == "" {
 		description = "Simple Linux AppImage Installer"
@@ -447,12 +511,17 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		iconLine = fmt.Sprintf("Icon=%s\n", iconName)
 	}
 
+	wmClassLine := ""
+	if wmClass != "" {
+		wmClassLine = fmt.Sprintf("StartupWMClass=%s\n", wmClass)
+	}
+
 	commentLine := ""
 	if singleLine := strings.TrimSpace(strings.Split(description, "\n")[0]); singleLine != "" {
 		commentLine = fmt.Sprintf("Comment=%s\n", singleLine)
 	}
 
-	desktopEntry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\n%sExec=%s %%U\nTryExec=%s\n%sCategories=%s\nTerminal=false\n", displayName, commentLine, symlink, symlink, iconLine, categories)
+	desktopEntry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\n%sExec=%s %%U\nTryExec=%s\n%s%sCategories=%s\nTerminal=false\n", displayName, commentLine, symlink, symlink, iconLine, wmClassLine, categories)
 	desktopPath := filepath.Join(desktopDir, "ahhhh-"+slug+".desktop")
 	if err := os.WriteFile(desktopPath, []byte(desktopEntry), 0644); err != nil {
 		return fmt.Errorf("Couldn't add the app to your desktop menu.")

@@ -67,6 +67,11 @@ var (
 	updateCheckMu   sync.Mutex
 )
 
+func hasNewerTag(current, latest string) bool {
+	nc, nl := normalizeTag(current), normalizeTag(latest)
+	return nc != "" && nl != "" && nc != nl
+}
+
 func loadFeed() ([]AppItem, error) {
 	cacheMu.RLock()
 	hasCache := len(cachedApps) > 0
@@ -124,7 +129,7 @@ func runBackgroundUpdateCheck() {
 			updateStatusMu.RUnlock()
 			continue
 		}
-		avail := meta.ReleaseTag != "" && latest != meta.ReleaseTag
+		avail := hasNewerTag(meta.ReleaseTag, latest)
 		nextMap[slug] = UpdateCheckEntry{
 			LatestTag:       latest,
 			UpdateAvailable: avail,
@@ -256,7 +261,7 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 				}
 				if entry, has := snap[slug]; has && entry.LatestTag != "" {
 					apps[i].LatestTag = entry.LatestTag
-					if meta.ReleaseTag != "" && entry.LatestTag != meta.ReleaseTag {
+					if hasNewerTag(meta.ReleaseTag, entry.LatestTag) {
 						apps[i].UpdateAvailable = true
 					}
 				}
@@ -297,7 +302,7 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 			}
 			if entry, has := snap[slug]; has && entry.LatestTag != "" {
 				latestTag = entry.LatestTag
-				if meta.ReleaseTag != "" && entry.LatestTag != meta.ReleaseTag {
+				if hasNewerTag(meta.ReleaseTag, entry.LatestTag) {
 					updAvail = true
 				}
 			}
@@ -595,7 +600,7 @@ func runCLI(args []string) {
 				fmt.Printf("Skipping %s: %v\n", m.Name, err)
 				continue
 			}
-			if latest != "" && latest != m.ReleaseTag {
+			if !tagsEqual(m.ReleaseTag, latest) && normalizeTag(latest) != "" {
 				fmt.Printf("Updating %s: %s -> %s...\n", m.Name, m.ReleaseTag, latest)
 				if err := runPrivileged("--sys-install", m.Name, dl, repo, latest); err != nil {
 					log.Fatal(err)
