@@ -65,7 +65,9 @@ sudo dpkg -i ahhhh_*_amd64.deb
 ## Usage
 
 GUI
-Look for Ahhhh in your apps.
+
+Run the Ahhhh app from your menu.
+
 
 CLI
 ```bash
@@ -76,6 +78,11 @@ ahhhh install ./MyTool.AppImage   # Install a local .AppImage
 ahhhh update                      # Update GitHub-tracked AppImages
 ahhhh remove <app-name>           # Remove binary, icon, symlink & launcher
 ```
+---
+
+## Updates
+
+The GUI will check for updates to your installed AppImages when it first opens then every 30 mins. When updates are available a button will appear in the app, allowing you to install individual or all updates.
 
 ---
 

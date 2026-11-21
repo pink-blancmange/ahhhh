@@ -20,6 +20,8 @@ import (
 //go:embed web/*
 var webFS embed.FS
 
+const backgroundUpdateInterval = 30 * time.Minute
+
 type CatalogFeed struct {
 	Items []AppItem `json:"items"`
 }
@@ -50,11 +52,20 @@ type AppDetails struct {
 	ReleaseNotes string   `json:"release_notes,omitempty"`
 }
 
+type UpdateCheckEntry struct {
+	LatestTag       string `json:"latest_tag,omitempty"`
+	UpdateAvailable bool   `json:"update_available,omitempty"`
+}
+
 var (
-	cachedApps    []AppItem
-	cacheMu       sync.RWMutex
-	detailsCache  = make(map[string]AppDetails)
-	detailsCacheM sync.RWMutex
+	cachedApps      []AppItem
+	cacheMu         sync.RWMutex
+	detailsCache    = make(map[string]AppDetails)
+	detailsCacheM   sync.RWMutex
+	updateStatusMap = make(map[string]UpdateCheckEntry)
+	updateStatusMu  sync.RWMutex
+	updateCheckMu   sync.Mutex
+	lastUpdateCheck time.Time
 )
 
 func loadFeed() ([]AppItem, error) {
@@ -89,6 +100,60 @@ func loadFeed() ([]AppItem, error) {
 	out := make([]AppItem, len(cachedApps))
 	copy(out, cachedApps)
 	return out, nil
+}
+
+func runBackgroundUpdateCheck() {
+	updateCheckMu.Lock()
+	defer updateCheckMu.Unlock()
+
+	slugs := listInstalledSlugs()
+	activeSlugs := make(map[string]bool, len(slugs))
+	nextMap := make(map[string]UpdateCheckEntry)
+
+	for _, slug := range slugs {
+		activeSlugs[slug] = true
+		meta, ok := readMeta(slug)
+		if !ok || meta.GitHubRepo == "" {
+			continue
+		}
+		_, _, latest, err := resolveGitHubRelease(meta.GitHubRepo)
+		if err != nil || latest == "" {
+			updateStatusMu.RLock()
+			if prev, exists := updateStatusMap[slug]; exists {
+				nextMap[slug] = prev
+			}
+			updateStatusMu.RUnlock()
+			continue
+		}
+		avail := meta.ReleaseTag != "" && latest != meta.ReleaseTag
+		nextMap[slug] = UpdateCheckEntry{
+			LatestTag:       latest,
+			UpdateAvailable: avail,
+		}
+	}
+
+	updateStatusMu.Lock()
+	for k := range updateStatusMap {
+		if !activeSlugs[k] {
+			delete(updateStatusMap, k)
+		}
+	}
+	for k, v := range nextMap {
+		updateStatusMap[k] = v
+	}
+	lastUpdateCheck = time.Now()
+	updateStatusMu.Unlock()
+}
+
+func startBackgroundUpdateLoop() {
+	go func() {
+		runBackgroundUpdateCheck()
+		ticker := time.NewTicker(backgroundUpdateInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			runBackgroundUpdateCheck()
+		}
+	}()
 }
 
 func fetchGitHubDetails(repo string) AppDetails {
@@ -150,14 +215,32 @@ func handleAppDetails(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(details)
 }
 
+func handleCheckUpdates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Unsupported request.", http.StatusMethodNotAllowed)
+		return
+	}
+	go runBackgroundUpdateCheck()
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func handleApps(w http.ResponseWriter, r *http.Request) {
-	checkUpdates := r.URL.Query().Get("check_updates") == "1"
+	if r.URL.Query().Get("check_updates") == "1" {
+		runBackgroundUpdateCheck()
+	}
 
 	apps, err := loadFeed()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+
+	updateStatusMu.RLock()
+	snap := make(map[string]UpdateCheckEntry, len(updateStatusMap))
+	for k, v := range updateStatusMap {
+		snap[k] = v
+	}
+	updateStatusMu.RUnlock()
 
 	seenSlugs := make(map[string]bool)
 	for i := range apps {
@@ -173,12 +256,10 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 				if apps[i].Description == "" && meta.Description != "" {
 					apps[i].Description = meta.Description
 				}
-				if checkUpdates && meta.GitHubRepo != "" {
-					if _, _, latest, err := resolveGitHubRelease(meta.GitHubRepo); err == nil && latest != "" {
-						apps[i].LatestTag = latest
-						if meta.ReleaseTag != "" && latest != meta.ReleaseTag {
-							apps[i].UpdateAvailable = true
-						}
+				if entry, has := snap[slug]; has && entry.LatestTag != "" {
+					apps[i].LatestTag = entry.LatestTag
+					if meta.ReleaseTag != "" && entry.LatestTag != meta.ReleaseTag {
+						apps[i].UpdateAvailable = true
 					}
 				}
 			}
@@ -194,6 +275,8 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 		tag := "local"
 		desc := "Installed from a local AppImage file."
 		var links []AppLink
+		var latestTag string
+		var updAvail bool
 		if meta, ok := readMeta(slug); ok {
 			if meta.Name != "" {
 				name = meta.Name
@@ -210,16 +293,24 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 			if meta.Homepage != "" {
 				links = append(links, AppLink{Type: "Home", URL: meta.Homepage})
 			}
+			if entry, has := snap[slug]; has && entry.LatestTag != "" {
+				latestTag = entry.LatestTag
+				if meta.ReleaseTag != "" && entry.LatestTag != meta.ReleaseTag {
+					updAvail = true
+				}
+			}
 		}
 		apps = append([]AppItem{{
-			Name:         name,
-			Description:  desc,
-			Categories:   []string{"Local"},
-			Links:        links,
-			Slug:         slug,
-			Installed:    true,
-			InstalledTag: tag,
-			LocalOnly:    true,
+			Name:            name,
+			Description:     desc,
+			Categories:      []string{"Local"},
+			Links:           links,
+			Slug:            slug,
+			Installed:       true,
+			InstalledTag:    tag,
+			LatestTag:       latestTag,
+			UpdateAvailable: updAvail,
+			LocalOnly:       true,
 		}}, apps...)
 	}
 
@@ -269,6 +360,57 @@ func handleInstall(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	slug := slugify(req.Name)
+	if slug != "" {
+		updateStatusMu.Lock()
+		delete(updateStatusMap, slug)
+		updateStatusMu.Unlock()
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Unsupported request.", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Items []struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Couldn't read the update-all request.", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Items) == 0 {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	for _, item := range req.Items {
+		downloadURL, repo, tag, err := resolveGitHubRelease(item.URL)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s: %s", item.Name, err.Error()), http.StatusBadRequest)
+			return
+		}
+		if err := runPrivileged("--sys-install", item.Name, downloadURL, repo, tag); err != nil {
+			http.Error(w, fmt.Sprintf("%s: %s", item.Name, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		slug := slugify(item.Name)
+		if slug != "" {
+			updateStatusMu.Lock()
+			delete(updateStatusMap, slug)
+			updateStatusMu.Unlock()
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -340,6 +482,14 @@ func handleRemove(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	slug := slugify(req.Name)
+	if slug != "" {
+		updateStatusMu.Lock()
+		delete(updateStatusMap, slug)
+		updateStatusMu.Unlock()
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -488,11 +638,15 @@ func main() {
 		return
 	}
 
+	startBackgroundUpdateLoop()
+
 	sub, _ := fs.Sub(webFS, "web")
 	http.Handle("/", http.FileServer(http.FS(sub)))
 	http.HandleFunc("/api/apps", handleApps)
 	http.HandleFunc("/api/app-details", handleAppDetails)
+	http.HandleFunc("/api/check-updates", handleCheckUpdates)
 	http.HandleFunc("/api/install", handleInstall)
+	http.HandleFunc("/api/update-all", handleUpdateAll)
 	http.HandleFunc("/api/upload-local", handleUploadLocal)
 	http.HandleFunc("/api/remove", handleRemove)
 

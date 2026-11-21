@@ -52,6 +52,59 @@
       gap: 0.5rem;
     }
 
+    .header-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+    }
+
+    @keyframes updatePillPulse {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 2px 2px 0 var(--pink), 0 0 0 0 rgba(250, 204, 21, 0.45);
+      }
+      50% {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 3px 3px 0 var(--pink), 0 0 14px rgba(250, 204, 21, 0.35);
+      }
+    }
+
+    button.updates-pill {
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.36rem 0.78rem;
+      border-radius: 999px;
+      border: 1.5px solid var(--amber);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(255, 42, 133, 0.16));
+      color: var(--amber);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.76rem;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      animation: updatePillPulse 2.1s ease-in-out infinite;
+    }
+
+    button.updates-pill.visible {
+      display: inline-flex;
+    }
+
+    button.updates-pill:hover:not(:disabled) {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #0b0b10;
+      box-shadow: 3px 3px 0 var(--pink);
+    }
+
+    .upd-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--pink);
+      flex-shrink: 0;
+    }
+
     .brand {
       display: inline-flex;
       align-items: center;
@@ -180,6 +233,12 @@
     button.update {
       background: var(--amber);
       border-color: var(--amber);
+      color: #0b0b10;
+    }
+
+    button.update:hover:not(:disabled) {
+      background: #fde047;
+      border-color: #fde047;
       color: #0b0b10;
     }
 
@@ -548,6 +607,18 @@
       box-shadow: 6px 6px 0 var(--pink);
     }
 
+    .updates-modal {
+      width: 100%;
+      max-width: 940px;
+      max-height: 90dvh;
+      overflow-y: auto;
+      background: #131620;
+      border: 2px solid var(--amber);
+      border-radius: 14px;
+      padding: 1.2rem 1.35rem;
+      box-shadow: 6px 6px 0 var(--pink);
+    }
+
     .dice-top {
       display: flex;
       flex-wrap: wrap;
@@ -607,6 +678,13 @@
       font-size: 1.05rem;
       font-weight: 900;
       color: var(--lime);
+    }
+
+    .updates-headline {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--amber);
     }
 
     .dice-sub {
@@ -731,13 +809,19 @@
       </div>
       <input id="q" type="search" placeholder="Search apps or categories..." />
       <button type="button" id="installedBtn">Installed</button>
-      <button type="button" id="updatesBtn">Check Updates</button>
       <button type="button" class="dice-btn" id="openDiceBtn" title="Roll the dice for 1–6 random apps">
         <span class="btn-die" aria-hidden="true">
           <span class="bpip on hot"></span><span class="bpip"></span><span class="bpip on"></span>
           <span class="bpip"></span><span class="bpip on hot"></span><span class="bpip"></span>
           <span class="bpip on"></span><span class="bpip"></span><span class="bpip on hot"></span>
         </span>
+      </button>
+    </div>
+
+    <div class="header-center">
+      <button type="button" class="updates-pill" id="updatesPillBtn" title="View available updates">
+        <span class="upd-dot" aria-hidden="true"></span>
+        <span id="updatesPillLabel">0 Updates</span>
       </button>
     </div>
 
@@ -783,6 +867,26 @@
       <button type="button" id="openFaqBtn">How It Works &amp; Uninstall</button>
     </div>
   </footer>
+
+  <!-- Available Updates Pop-Up Modal -->
+  <div class="backdrop" id="updatesBackdrop">
+    <div class="updates-modal">
+      <div class="dice-top">
+        <div class="dice-stage">
+          <div class="die" id="updatesDieFace"></div>
+          <div>
+            <div class="updates-headline" id="updatesHeadline">Available Updates</div>
+            <div class="dice-sub" id="updatesSub">Background release checks active</div>
+          </div>
+        </div>
+        <div class="drawer-actions">
+          <button type="button" class="update" id="updateAllBtn">Update All</button>
+          <button type="button" id="closeUpdatesBtn">Close</button>
+        </div>
+      </div>
+      <div class="dice-grid" id="updatesGrid"></div>
+    </div>
+  </div>
 
   <!-- Animated Dice Pop-Up Modal -->
   <div class="backdrop" id="diceBackdrop">
@@ -1029,14 +1133,137 @@
       return txt;
     }
 
-    function renderDieFace(val) {
+    function renderDieInto(el, val) {
       const active = PIP_PATTERNS[val] || PIP_PATTERNS[1];
-      const die = document.getElementById('dieFace');
-      die.innerHTML = Array.from({ length: 9 }, (_, i) => {
+      el.innerHTML = Array.from({ length: 9 }, (_, i) => {
         const on = active.includes(i);
         const hot = on && (val === 1 || val === 6);
         return `<span class="pip ${on ? 'on' : ''} ${hot ? 'hot' : ''}"></span>`;
       }).join('');
+    }
+
+    function renderDieFace(val) {
+      renderDieInto(document.getElementById('dieFace'), val);
+    }
+
+    function getUpdateableApps() {
+      return apps.filter(a => a.installed && a.update_available);
+    }
+
+    function syncUpdatesButton() {
+      const updatables = getUpdateableApps();
+      const count = updatables.length;
+      const pill = document.getElementById('updatesPillBtn');
+      const label = document.getElementById('updatesPillLabel');
+
+      if (count > 0) {
+        label.textContent = `${count} ${count === 1 ? 'Update' : 'Updates'}`;
+        pill.classList.add('visible');
+      } else {
+        pill.classList.remove('visible');
+        closeUpdatesPopup();
+      }
+    }
+
+    function renderUpdateTileHtml(a) {
+      const dlUrl = findDownloadLink(a);
+      const key = appKey(a);
+      const safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeName = (a.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+      const crate = mapCrate(a);
+      const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const cleanDesc = stripHtml(a.description) || 'No description provided.';
+      const tagText = a.installed_tag && a.latest_tag
+        ? `${a.installed_tag} → ${a.latest_tag}`
+        : `Update ${a.latest_tag || ''}`.trim();
+
+      const actionBtn = dlUrl
+        ? `<button type="button" class="update" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Update Now</button>`
+        : `<span style="color:var(--muted);font-size:0.72rem;">No link</span>`;
+
+      return `
+        <div class="card" onclick="openByKey('${safeKey}')">
+          <div>
+            <div class="card-top">
+              <div class="name" title="${(a.name || '').replace(/"/g, '&quot;')}">${a.name}</div>
+              <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
+            </div>
+            <div class="desc">${cleanDesc}</div>
+          </div>
+          <div class="foot">
+            <div><span class="upd-badge">${tagText}</span></div>
+            <div class="actions">${actionBtn}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUpdatesPopupContent() {
+      const updatables = getUpdateableApps();
+      const dieVal = Math.min(6, Math.max(1, updatables.length));
+      renderDieInto(document.getElementById('updatesDieFace'), dieVal);
+
+      document.getElementById('updatesHeadline').textContent =
+        `${updatables.length} ${updatables.length === 1 ? 'Update' : 'Updates'} Available`;
+      document.getElementById('updatesSub').textContent =
+        'Checked automatically in the background';
+
+      const grid = document.getElementById('updatesGrid');
+      const updateAllBtn = document.getElementById('updateAllBtn');
+
+      if (updatables.length === 0) {
+        grid.innerHTML = `<div style="color:var(--muted);padding:1rem 0;">Everything is up to date.</div>`;
+        updateAllBtn.disabled = true;
+        return;
+      }
+
+      updateAllBtn.disabled = false;
+      grid.innerHTML = updatables.map(renderUpdateTileHtml).join('');
+    }
+
+    function openUpdatesPopup() {
+      renderUpdatesPopupContent();
+      document.getElementById('updatesBackdrop').classList.add('open');
+    }
+
+    function closeUpdatesPopup() {
+      document.getElementById('updatesBackdrop').classList.remove('open');
+    }
+
+    async function updateAllApps() {
+      const updatables = getUpdateableApps().filter(a => Boolean(findDownloadLink(a)));
+      if (updatables.length === 0) return;
+
+      const btn = document.getElementById('updateAllBtn');
+      const closeBtn = document.getElementById('closeUpdatesBtn');
+      btn.disabled = true;
+      closeBtn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = `Updating (${updatables.length})...`;
+      showToast(`Updating ${updatables.length} ${updatables.length === 1 ? 'app' : 'apps'}...`);
+
+      try {
+        const payload = {
+          items: updatables.map(a => ({ name: a.name, url: findDownloadLink(a) }))
+        };
+        const res = await fetch('/api/update-all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeUpdatesPopup();
+        await init();
+        showToast(`Updated ${updatables.length} ${updatables.length === 1 ? 'app' : 'apps'}.`);
+      } catch (e) {
+        showToast(friendlyError(e.message), true);
+        await init();
+      } finally {
+        btn.disabled = false;
+        closeBtn.disabled = false;
+        btn.textContent = oldText;
+      }
     }
 
     function rollDice() {
@@ -1119,11 +1346,15 @@
       apps = await res.json();
       appByKey = new Map(apps.map(a => [appKey(a), a]));
       assignRandomRanks(apps);
+      syncUpdatesButton();
       renderCategories();
       renderGrid();
       if (document.getElementById('diceBackdrop').classList.contains('open') && currentDiceApps.length > 0) {
         currentDiceApps = currentDiceApps.map(old => appByKey.get(appKey(old)) || old);
         document.getElementById('diceGrid').innerHTML = currentDiceApps.map(a => renderAppCardHtml(a)).join('');
+      }
+      if (document.getElementById('updatesBackdrop').classList.contains('open')) {
+        renderUpdatesPopupContent();
       }
     }
 
@@ -1257,6 +1488,7 @@
 
     function selectCrateFromCard(crate) {
       closeDicePopup();
+      closeUpdatesPopup();
       selectedCrate = selectedCrate === crate ? '' : crate;
       currentPage = 1;
       renderCategories();
@@ -1447,6 +1679,13 @@
       renderGrid();
     });
 
+    document.getElementById('updatesPillBtn').addEventListener('click', openUpdatesPopup);
+    document.getElementById('updateAllBtn').addEventListener('click', updateAllApps);
+    document.getElementById('closeUpdatesBtn').addEventListener('click', closeUpdatesPopup);
+    document.getElementById('updatesBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'updatesBackdrop') closeUpdatesPopup();
+    });
+
     document.getElementById('openDiceBtn').addEventListener('click', openDicePopup);
     document.getElementById('rerollBtn').addEventListener('click', rollDice);
     document.getElementById('closeDiceBtn').addEventListener('click', closeDicePopup);
@@ -1470,17 +1709,19 @@
       const drawer = document.getElementById('drawerBackdrop');
       const faq = document.getElementById('faqBackdrop');
       const dice = document.getElementById('diceBackdrop');
+      const updates = document.getElementById('updatesBackdrop');
 
       if (e.key === 'Escape') {
         if (drawer.classList.contains('open')) { closeDrawer(); return; }
         if (faq.classList.contains('open')) { faq.classList.remove('open'); return; }
         if (dice.classList.contains('open')) { closeDicePopup(); return; }
+        if (updates.classList.contains('open')) { closeUpdatesPopup(); return; }
         return;
       }
 
       const tag = (document.activeElement && document.activeElement.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (drawer.classList.contains('open') || faq.classList.contains('open') || dice.classList.contains('open')) return;
+      if (drawer.classList.contains('open') || faq.classList.contains('open') || dice.classList.contains('open') || updates.classList.contains('open')) return;
 
       if (e.key === 'ArrowRight' && currentPage < totalPagesCache) {
         goPage(currentPage + 1, totalPagesCache);
@@ -1506,14 +1747,6 @@
       renderGrid();
     });
 
-    document.getElementById('updatesBtn').addEventListener('click', async e => {
-      e.target.disabled = true;
-      e.target.textContent = 'Checking...';
-      await init(true);
-      e.target.disabled = false;
-      e.target.textContent = 'Check Updates';
-    });
-
     document.getElementById('pickFileBtn').addEventListener('click', () => document.getElementById('fileInput').click());
     document.getElementById('fileInput').addEventListener('change', e => setSelectedLocalFile(e.target.files[0] || null));
     document.getElementById('uploadBtn').addEventListener('click', () => uploadLocal(getSelectedLocalFile()));
@@ -1532,6 +1765,11 @@
     });
 
     init();
+    setInterval(() => {
+      if (!document.hidden) {
+        init();
+      }
+    }, 60 * 1000);
   </script>
 </body>
 </html>
