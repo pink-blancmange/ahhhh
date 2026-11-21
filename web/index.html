@@ -594,6 +594,30 @@
       overflow: hidden;
     }
 
+    .repo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      margin-top: 0.45rem;
+      padding: 0.14rem 0.48rem;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.68rem;
+      text-decoration: none;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .repo-pill:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
     .foot {
       display: flex;
       flex-wrap: wrap;
@@ -1185,6 +1209,17 @@
       return gh ? gh.url : '';
     }
 
+    function extractGitHubSlug(app) {
+      const gh = findGitHubURL(app);
+      if (!gh) return '';
+      return gh
+        .replace(/^https?:\/\/github\.com\//i, '')
+        .replace(/\/+$/, '')
+        .split('/')
+        .slice(0, 2)
+        .join('/');
+    }
+
     function isInstallable(app) {
       return Boolean(app.installed || findDownloadLink(app));
     }
@@ -1335,6 +1370,8 @@
 
     function renderUpdateTileHtml(a) {
       const dlUrl = findDownloadLink(a);
+      const ghUrl = findGitHubURL(a);
+      const ghSlug = extractGitHubSlug(a);
       const key = appKey(a);
       const safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const safeName = (a.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -1342,6 +1379,9 @@
       const crate = mapCrate(a);
       const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const cleanDesc = stripHtml(a.description) || 'No description provided.';
+      const repoHtml = ghSlug
+        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">GH · ${ghSlug}</a>`
+        : '';
       const tagText = a.installed_tag && a.latest_tag
         ? `${a.installed_tag} → ${a.latest_tag}`
         : `Update ${a.latest_tag || ''}`.trim();
@@ -1358,6 +1398,7 @@
               <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
             </div>
             <div class="desc">${cleanDesc}</div>
+            ${repoHtml}
           </div>
           <div class="foot">
             <div><span class="upd-badge">${tagText}</span></div>
@@ -1578,6 +1619,8 @@
 
     function renderAppCardHtml(a) {
       const dlUrl = findDownloadLink(a);
+      const ghUrl = findGitHubURL(a);
+      const ghSlug = extractGitHubSlug(a);
       const key = appKey(a);
       const safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const safeName = (a.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -1585,6 +1628,9 @@
       const crate = mapCrate(a);
       const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const cleanDesc = stripHtml(a.description) || 'No description provided.';
+      const repoHtml = ghSlug
+        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">GH · ${ghSlug}</a>`
+        : '';
 
       let status = '';
       if (a.update_available) {
@@ -1613,6 +1659,7 @@
               <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
             </div>
             <div class="desc">${cleanDesc}</div>
+            ${repoHtml}
           </div>
           <div class="foot">
             <div>${status}</div>
@@ -1666,12 +1713,16 @@
       const token = ++drawerToken;
       const dlUrl = findDownloadLink(app);
       const ghUrl = findGitHubURL(app);
+      const ghSlug = extractGitHubSlug(app);
       const safeName = (app.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
       const cleanDesc = stripHtml(app.description) || 'No description provided.';
 
       document.getElementById('dName').textContent = app.name;
-      document.getElementById('dCat').textContent = `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}`;
+      const catBase = `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}`;
+      document.getElementById('dCat').innerHTML = ghSlug
+        ? `${catBase} · <a href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="color:var(--amber);text-decoration:underline;">${ghSlug}</a>`
+        : catBase;
       document.getElementById('dDesc').textContent = cleanDesc;
 
       const notesBox = document.getElementById('dNotes');
@@ -1717,8 +1768,11 @@
               document.getElementById('dDesc').textContent = ghDesc;
             }
             if (Array.isArray(info.topics) && info.topics.length > 0) {
-              document.getElementById('dCat').textContent =
-                `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'} · #${info.topics.slice(0, 4).join(' #')}`;
+              const repoSuffix = ghSlug
+                ? ` · <a href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="color:var(--amber);text-decoration:underline;">${ghSlug}</a>`
+                : '';
+              document.getElementById('dCat').innerHTML =
+                `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}${repoSuffix} · #${info.topics.slice(0, 4).join(' #')}`;
             }
             const cleanNotes = stripHtml(info.release_notes);
             if (cleanNotes) {
