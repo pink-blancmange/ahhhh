@@ -323,19 +323,12 @@ func runPrivileged(args ...string) error {
 	}
 
 	execPath := self
-	if strings.Contains(self, "/.mount_") || os.Getenv("APPIMAGE") != "" {
-		tmpBin, err := os.CreateTemp("/var/tmp", "ahhhh-priv-*")
-		if err != nil {
-			return fmt.Errorf("Couldn't prepare privileged helper binary.")
+	if strings.Contains(self, "/.mount_") {
+		if appImg := strings.TrimSpace(os.Getenv("APPIMAGE")); appImg != "" {
+			if _, err := os.Stat(appImg); err == nil {
+				execPath = appImg
+			}
 		}
-		tmpBinPath := tmpBin.Name()
-		tmpBin.Close()
-		defer os.Remove(tmpBinPath)
-
-		if err := copyFileSimple(self, tmpBinPath, 0755); err != nil {
-			return fmt.Errorf("Couldn't copy helper binary for admin install.")
-		}
-		execPath = tmpBinPath
 	}
 
 	cmd := exec.Command("pkexec", append([]string{execPath}, args...)...)
