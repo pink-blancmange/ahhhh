@@ -81,9 +81,66 @@ func formatVersionTag(tag string) string {
 	return trimmed
 }
 
+func parseSemverParts(tag string) (major, minor, patch int, ok bool) {
+	norm := normalizeTag(tag)
+	m := cleanSemverCore.FindStringSubmatch(norm)
+	if len(m) != 2 {
+		return 0, 0, 0, false
+	}
+	var maj, min, pat int
+	if _, err := fmt.Sscanf(m[1], "%d.%d.%d", &maj, &min, &pat); err != nil {
+		return 0, 0, 0, false
+	}
+	return maj, min, pat, true
+}
+
+func compareVersionTags(a, b string) int {
+	na, nb := normalizeTag(a), normalizeTag(b)
+	if na == "" || nb == "" {
+		return 0
+	}
+	majA, minA, patA, okA := parseSemverParts(na)
+	majB, minB, patB, okB := parseSemverParts(nb)
+	if okA && okB {
+		if majA != majB {
+			if majA > majB {
+				return 1
+			}
+			return -1
+		}
+		if minA != minB {
+			if minA > minB {
+				return 1
+			}
+			return -1
+		}
+		if patA != patB {
+			if patA > patB {
+				return 1
+			}
+			return -1
+		}
+		return 0
+	}
+	if na == nb {
+		return 0
+	}
+	if na > nb {
+		return 1
+	}
+	return -1
+}
+
+func hasNewerTag(current, latest string) bool {
+	return compareVersionTags(latest, current) > 0
+}
+
 func tagsEqual(a, b string) bool {
 	na, nb := normalizeTag(a), normalizeTag(b)
-	return na != "" && nb != "" && na == nb
+	if na == "" || nb == "" {
+		return false
+	}
+	return compareVersionTags(a, b) == 0
 }
 
 func detectVersionTag(candidates ...string) string {

@@ -20,7 +20,10 @@ import (
 //go:embed web/*
 var webFS embed.FS
 
-const backgroundUpdateInterval = 30 * time.Minute
+const (
+	backgroundUpdateInterval = 30 * time.Minute
+	backgroundCheckPace      = 400 * time.Millisecond
+)
 
 type CatalogFeed struct {
 	Items []AppItem `json:"items"`
@@ -57,6 +60,11 @@ type UpdateCheckEntry struct {
 	UpdateAvailable bool   `json:"update_available,omitempty"`
 }
 
+type BatchUpdateItem struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
 var (
 	cachedApps      []AppItem
 	cacheMu         sync.RWMutex
@@ -66,11 +74,6 @@ var (
 	updateStatusMu  sync.RWMutex
 	updateCheckMu   sync.Mutex
 )
-
-func hasNewerTag(current, latest string) bool {
-	nc, nl := normalizeTag(current), normalizeTag(latest)
-	return nc != "" && nl != "" && nc != nl
-}
 
 func loadFeed() ([]AppItem, error) {
 	cacheMu.RLock()
@@ -114,12 +117,18 @@ func runBackgroundUpdateCheck() {
 	activeSlugs := make(map[string]bool, len(slugs))
 	nextMap := make(map[string]UpdateCheckEntry)
 
+	checkedAny := false
 	for _, slug := range slugs {
 		activeSlugs[slug] = true
 		meta, ok := readMeta(slug)
 		if !ok || meta.GitHubRepo == "" {
 			continue
 		}
+		if checkedAny && backgroundCheckPace > 0 {
+			time.Sleep(backgroundCheckPace)
+		}
+		checkedAny = true
+
 		_, _, latest, err := resolveGitHubRelease(meta.GitHubRepo)
 		if err != nil || latest == "" {
 			updateStatusMu.RLock()
@@ -269,7 +278,6 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Include locally installed AppImages that aren't in the online catalog
 	for _, slug := range listInstalledSlugs() {
 		if seenSlugs[slug] {
 			continue
@@ -401,6 +409,104 @@ func handleInstall(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func resolveBatchItems(items []BatchUpdateItem) ([]struct {
+	Name        string
+	DownloadURL string
+	Repo        string
+	Tag         string
+}, error) {
+	resolved := make([]struct {
+		Name        string
+		DownloadURL string
+		Repo        string
+		Tag         string
+	}, 0, len(items))
+
+	for _, item := range items {
+		dl, repo, tag, err := resolveGitHubRelease(item.URL)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s", item.Name, err.Error())
+		}
+		resolved = append(resolved, struct {
+			Name        string
+			DownloadURL string
+			Repo        string
+			Tag         string
+		}{
+			Name:        item.Name,
+			DownloadURL: dl,
+			Repo:        repo,
+			Tag:         tag,
+		})
+	}
+	return resolved, nil
+}
+
+func runBatchSystemInstall(items []BatchUpdateItem) error {
+	resolved, err := resolveBatchItems(items)
+	if err != nil {
+		return err
+	}
+	if len(resolved) == 0 {
+		return nil
+	}
+
+	payload, err := json.Marshal(items)
+	if err != nil {
+		return fmt.Errorf("Couldn't encode batch update items.")
+	}
+
+	tmpFile, err := os.CreateTemp("", "ahhhh-batch-*.json")
+	if err != nil {
+		return fmt.Errorf("Couldn't create temporary batch file.")
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmpFile.Write(payload); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("Couldn't write temporary batch file.")
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("Couldn't close temporary batch file.")
+	}
+
+	if err := runPrivileged("--sys-update-all", tmpPath); err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		slug := slugify(item.Name)
+		if slug != "" {
+			updateStatusMu.Lock()
+			delete(updateStatusMap, slug)
+			updateStatusMu.Unlock()
+		}
+	}
+	return nil
+}
+
+func executeBatchSystemInstallFromFile(jsonPath string) error {
+	raw, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return fmt.Errorf("Couldn't read batch update list.")
+	}
+	var items []BatchUpdateItem
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return fmt.Errorf("Invalid batch update format.")
+	}
+	resolved, err := resolveBatchItems(items)
+	if err != nil {
+		return err
+	}
+	for _, r := range resolved {
+		if err := installAppImageSystemWide(r.Name, r.DownloadURL, r.Repo, r.Tag); err != nil {
+			return fmt.Errorf("%s: %s", r.Name, err.Error())
+		}
+	}
+	return nil
+}
+
 func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Unsupported request.", http.StatusMethodNotAllowed)
@@ -408,10 +514,7 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Items []struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"items"`
+		Items []BatchUpdateItem `json:"items"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Couldn't read the update-all request.", http.StatusBadRequest)
@@ -423,22 +526,9 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, item := range req.Items {
-		downloadURL, repo, tag, err := resolveGitHubRelease(item.URL)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("%s: %s", item.Name, err.Error()), http.StatusBadRequest)
-			return
-		}
-		if err := runPrivileged("--sys-install", item.Name, downloadURL, repo, tag); err != nil {
-			http.Error(w, fmt.Sprintf("%s: %s", item.Name, err.Error()), http.StatusInternalServerError)
-			return
-		}
-		slug := slugify(item.Name)
-		if slug != "" {
-			updateStatusMu.Lock()
-			delete(updateStatusMap, slug)
-			updateStatusMu.Unlock()
-		}
+	if err := runBatchSystemInstall(req.Items); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -589,28 +679,33 @@ func runCLI(args []string) {
 
 	case "update":
 		slugs := listInstalledSlugs()
-		updated := 0
+		var batch []BatchUpdateItem
 		for _, s := range slugs {
 			m, ok := readMeta(s)
 			if !ok || m.GitHubRepo == "" {
 				continue
 			}
-			dl, repo, latest, err := resolveGitHubRelease(m.GitHubRepo)
+			_, repo, latest, err := resolveGitHubRelease(m.GitHubRepo)
 			if err != nil {
 				fmt.Printf("Skipping %s: %v\n", m.Name, err)
 				continue
 			}
-			if !tagsEqual(m.ReleaseTag, latest) && normalizeTag(latest) != "" {
-				fmt.Printf("Updating %s: %s -> %s...\n", m.Name, m.ReleaseTag, latest)
-				if err := runPrivileged("--sys-install", m.Name, dl, repo, latest); err != nil {
-					log.Fatal(err)
-				}
-				updated++
+			if hasNewerTag(m.ReleaseTag, latest) {
+				fmt.Printf("Queued %s: %s -> %s\n", m.Name, m.ReleaseTag, latest)
+				batch = append(batch, BatchUpdateItem{
+					Name: m.Name,
+					URL:  "https://github.com/" + repo,
+				})
 			}
 		}
-		if updated == 0 {
+		if len(batch) == 0 {
 			fmt.Println("All GitHub-tracked AppImages are up to date.")
+			return
 		}
+		if err := runBatchSystemInstall(batch); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Updated %d app(s).\n", len(batch))
 
 	case "remove":
 		if len(args) < 2 {
@@ -649,6 +744,15 @@ func main() {
 				tag = os.Args[5]
 			}
 			if err := installAppImageSystemWide(os.Args[2], os.Args[3], repo, tag); err != nil {
+				log.Fatal(err)
+			}
+			return
+
+		case "--sys-update-all":
+			if len(os.Args) < 3 {
+				log.Fatal("Missing batch update file.")
+			}
+			if err := executeBatchSystemInstallFromFile(os.Args[2]); err != nil {
 				log.Fatal(err)
 			}
 			return

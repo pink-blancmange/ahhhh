@@ -996,7 +996,7 @@
           <div class="die" id="updatesDieFace"></div>
           <div>
             <div class="updates-headline" id="updatesHeadline">Available Updates</div>
-            <div class="dice-sub" id="updatesSub">Background release checks active</div>
+            <div class="dice-sub" id="updatesSub">Background release checks active · single admin prompt</div>
           </div>
         </div>
         <div class="drawer-actions">
@@ -1375,7 +1375,7 @@
       document.getElementById('updatesHeadline').textContent =
         `${updatables.length} ${updatables.length === 1 ? 'Update' : 'Updates'} Available`;
       document.getElementById('updatesSub').textContent =
-        'Checked automatically in the background';
+        'Checked automatically in the background · single admin prompt';
 
       const grid = document.getElementById('updatesGrid');
       const updateAllBtn = document.getElementById('updateAllBtn');
@@ -1407,7 +1407,7 @@
       const closeBtn = document.getElementById('closeUpdatesBtn');
       closeBtn.disabled = true;
       beginWork(
-        `Updating ${updatables.length} ${updatables.length === 1 ? 'app' : 'apps'}...`,
+        `Batch updating ${updatables.length} ${updatables.length === 1 ? 'app' : 'apps'}... (one admin prompt)`,
         btn,
         `Updating (${updatables.length})...`
       );
