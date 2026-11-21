@@ -26,16 +26,24 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 curl -fsSL https://raw.githubusercontent.com/pink-blancmange/ahhhh/main/install.sh | bash
 ```
 
-### AppImage, `.deb` & Archives
+### AppImage (System-Wide Self-Install or Portable)
 
-Grab the `.AppImage` (`x86_64` / `aarch64`), `.deb` (`amd64` / `arm64`), or `.tar.gz` releases directly from the [**Releases**](https://github.com/pink-blancmange/ahhhh/releases) tab:
+Grab the `.AppImage` (`x86_64` / `aarch64`) from the [**Releases**](https://github.com/pink-blancmange/ahhhh/releases) tab and make it executable:
 
 ```bash
 chmod +x ahhhh_*_x86_64.AppImage
-./ahhhh_*_x86_64.AppImage
 ```
 
-Or install the `.deb` package:
+* **Install `ahhhh` system-wide (recommended):** Installs to `/opt/appimages/ahhhh/`, links `/usr/local/bin/ahhhh`, adds your desktop menu icon, and enables built-in self-updates:
+  ```bash
+  ./ahhhh_*_x86_64.AppImage --self-install
+  ```
+* **Run portable without installing:**
+  ```bash
+  ./ahhhh_*_x86_64.AppImage
+  ```
+
+### `.deb` Package
 
 ```bash
 sudo dpkg -i ahhhh_*_amd64.deb
@@ -58,18 +66,18 @@ sudo dpkg -i ahhhh_*_amd64.deb
 * **Local `.AppImage` drop** — Drop a local `.AppImage` onto the target box, optionally name it, and extract its metadata/icon automatically.
 * **Richer app details** — Pulls AppStream XML descriptions, `.desktop` comments, GitHub repo topics, and latest release notes in the inspector modal.
 * **Dice roller** — Roll 1–6 random installable apps from the catalog or active category crate.
-* **CLI ready** — Run headless commands straight from the terminal.
+* **Self-updating & CLI ready** — Tracks updates for installed GitHub AppImages (including `ahhhh` itself when installed via `--self-install`) and supports headless CLI commands.
 
 ---
 
 ## Usage
 
-GUI
+### GUI
 
-Run the Ahhhh app from your menu.
+Launch **ahhhh** from your desktop application menu (or run `ahhhh` in a terminal to open `http://127.0.0.1:8745`).
 
+### CLI
 
-CLI
 ```bash
 ahhhh                             # Launch the web workbench
 ahhhh list                        # List installed system-wide AppImages
@@ -78,11 +86,12 @@ ahhhh install ./MyTool.AppImage   # Install a local .AppImage
 ahhhh update                      # Update GitHub-tracked AppImages
 ahhhh remove <app-name>           # Remove binary, icon, symlink & launcher
 ```
+
 ---
 
 ## Updates
 
-The GUI will check for updates to your installed AppImages when it first opens then every 30 mins. When updates are available a button will appear in the app, allowing you to install individual or all updates.
+The GUI checks for updates to your installed AppImages when it first opens and every 30 minutes thereafter. When updates are available, an **`# Updates`** button appears in the header so you can install individual updates or update everything at once.
 
 ---
 
@@ -92,16 +101,25 @@ The GUI will check for updates to your installed AppImages when it first opens t
 git clone https://github.com/pink-blancmange/ahhhh.git
 cd ahhhh
 go build -o ahhhh .
-./ahhhh
+./ahhhh --self-install   # Optional: install system-wide with menu icon & self-updates
 ```
 
 ---
 
 ## Uninstall
 
-* For the **`.deb` run this:** `sudo apt remove ahhhh`
-* For the **One-liner (`install.sh`) run this:** `sudo rm -f /usr/local/bin/ahhhh && rm -f ~/.local/share/applications/ahhhh.desktop ~/.local/share/icons/hicolor/256x256/apps/ahhhh.png && gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor >/dev/null 2>&1 || true`
-* For the **`.AppImage` run this:** Remove `/opt/appimages/ahhhh.AppImage`, `/usr/local/bin/ahhhh`, and its `.desktop`/icon files if wired into your menu.
+* **Self-installed AppImage (`--self-install`):**
+  ```bash
+  ahhhh remove ahhhh
+  ```
+* **`.deb` package:**
+  ```bash
+  sudo apt remove ahhhh
+  ```
+* **One-liner (`install.sh`):**
+  ```bash
+  sudo rm -f /usr/local/bin/ahhhh && rm -f ~/.local/share/applications/ahhhh.desktop ~/.local/share/icons/hicolor/256x256/apps/ahhhh.png && gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor >/dev/null 2>&1 || true
+  ```
 
 ---
 
