@@ -1,496 +1,2148 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ahhhh // ahhhh</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>APPAPPAPP // ahhhh</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
   <style>
     :root {
-      --bg: #07090f;
-      --panel: #0e1320;
-      --panel-2: #121829;
-      --border: #1e2840;
-      --text: #f3f6fc;
-      --muted: #9aa7bf;
+      --bg: #0c0d11;
+      --surface: #141720;
+      --card: #161924;
+      --border: #272c3d;
+      --text: #f3f4f8;
+      --muted: #98a0b3;
       --pink: #ff2a85;
-      --cyan: #22d3ee;
       --lime: #a3e635;
+      --cyan: #22d3ee;
+      --amber: #facc15;
     }
+
     * { box-sizing: border-box; }
+
     body {
-      margin: 0;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 15% 8%, rgba(255, 42, 133, 0.06), transparent 38%),
+        radial-gradient(circle at 85% 12%, rgba(34, 211, 238, 0.05), transparent 40%),
+        var(--bg);
       color: var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      margin: 0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 0.85rem clamp(1rem, 2.8vw, 2rem);
     }
-    .wrap {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 20px 18px 48px;
-    }
-    .topbar {
+
+    header {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
       align-items: center;
-      margin-bottom: 14px;
+      justify-content: space-between;
+      gap: 0.65rem;
+      padding-bottom: 0.7rem;
+      margin-bottom: 0.7rem;
+      border-bottom: 1.5px solid var(--border);
     }
+
+    .header-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .header-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+    }
+
+    @keyframes updatePillPulse {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 2px 2px 0 var(--pink), 0 0 0 0 rgba(250, 204, 21, 0.45);
+      }
+      50% {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 3px 3px 0 var(--pink), 0 0 14px rgba(250, 204, 21, 0.35);
+      }
+    }
+
+    button.updates-pill {
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.36rem 0.78rem;
+      border-radius: 999px;
+      border: 1.5px solid var(--amber);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(255, 42, 133, 0.16));
+      color: var(--amber);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.76rem;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      animation: updatePillPulse 2.1s ease-in-out infinite;
+    }
+
+    button.updates-pill.visible {
+      display: inline-flex;
+    }
+
+    button.updates-pill:hover:not(:disabled) {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #0b0b10;
+      box-shadow: 3px 3px 0 var(--pink);
+    }
+
+    .upd-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--pink);
+      flex-shrink: 0;
+    }
+
     .brand {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      font-weight: 900;
-      font-size: 1.5rem;
-      letter-spacing: 0.04em;
-      color: var(--pink);
-    }
-    .cli-pill {
-      background: var(--lime);
-      color: #081104;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.72rem;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 5px;
-    }
-    .search-box {
-      flex: 1 1 260px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 0.95rem;
-    }
-    .btn {
-      background: var(--panel-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 9px 14px;
-      font-weight: 700;
+      gap: 0.45rem;
+      margin-right: 0.25rem;
       cursor: pointer;
     }
-    .btn-pink {
-      background: var(--pink);
-      border-color: var(--pink);
-      color: #fff;
+
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+      font-style: italic;
+      text-shadow: 2px 2px 0 rgba(255, 42, 133, 0.45);
     }
-    .btn-cyan {
-      background: transparent;
+
+    .sub {
+      font-size: 0.66rem;
+      color: #0b0b10;
+      background: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 900;
+      padding: 0.08rem 0.36rem;
+      border-radius: 3px;
+    }
+
+    input[type="search"],
+    input[type="text"] {
+      padding: 0.4rem 0.68rem;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.82rem;
+    }
+
+    input[type="search"]:focus,
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--cyan);
+    }
+
+    input[type="search"] { width: 200px; }
+    input[type="text"].local-name { width: 105px; }
+    input[type="text"].gh-repo-input { width: 185px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+
+    button {
+      padding: 0.4rem 0.72rem;
+      border-radius: 7px;
+      border: 1px solid #353b50;
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: transform 0.08s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    button:hover:not(:disabled) {
       border-color: var(--cyan);
       color: var(--cyan);
     }
-    .bar-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    @media (max-width: 820px) {
-      .bar-row { grid-template-columns: 1fr; }
-    }
-    .box {
-      background: var(--panel);
-      border: 1px dashed var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-    .box-label {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.76rem;
-      font-weight: 800;
-      color: var(--cyan);
-    }
-    .box-label.amber { color: #facc15; }
-    .input-sm {
-      flex: 1 1 140px;
-      min-width: 110px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 7px;
-      padding: 7px 10px;
-      font-size: 0.88rem;
-    }
-    .cats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .cat-btn {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .cat-btn.active {
+
+    button.primary {
       background: var(--pink);
       border-color: var(--pink);
       color: #fff;
     }
+
+    button.primary:hover:not(:disabled) {
+      background: #ff4796;
+      border-color: #ff4796;
+      color: #fff;
+    }
+
+    button.cyan-btn {
+      background: rgba(34, 211, 238, 0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    button.cyan-btn:hover:not(:disabled) {
+      background: var(--cyan);
+      color: #0b0b10;
+    }
+
+    button.dice-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.28rem 0.44rem;
+      border-color: var(--lime);
+      background: rgba(163, 230, 53, 0.1);
+    }
+
+    @keyframes diceBtnWobble {
+      0%   { transform: rotate(0deg) scale(1); }
+      25%  { transform: rotate(-14deg) scale(1.08); }
+      50%  { transform: rotate(12deg) scale(1.1); }
+      75%  { transform: rotate(-8deg) scale(1.06); }
+      100% { transform: rotate(4deg) scale(1.06); }
+    }
+
+    button.dice-btn:hover:not(:disabled) {
+      border-color: var(--lime);
+      background: rgba(163, 230, 53, 0.2);
+      box-shadow: 2px 2px 0 var(--pink);
+      animation: diceBtnWobble 0.42s ease forwards;
+    }
+
+    .btn-die {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      background: linear-gradient(145deg, #ffffff 0%, #e2e8f0 100%);
+      border: 1.5px solid #0c0d11;
+      box-shadow: 1.5px 1.5px 0 var(--pink);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 2.5px;
+      gap: 1px;
+    }
+
+    .btn-die .bpip {
+      width: 3.5px;
+      height: 3.5px;
+      border-radius: 50%;
+      background: transparent;
+      margin: auto;
+    }
+
+    .btn-die .bpip.on { background: #0c0d11; }
+    .btn-die .bpip.on.hot { background: var(--pink); }
+
+    button.update {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #0b0b10;
+    }
+
+    button.update:hover:not(:disabled) {
+      background: #fde047;
+      border-color: #fde047;
+      color: #0b0b10;
+    }
+
+    button.remove {
+      background: transparent;
+      border-color: rgba(255, 42, 133, 0.55);
+      color: #ff8ab9;
+    }
+
+    button.remove:hover:not(:disabled) {
+      background: rgba(255, 42, 133, 0.14);
+      border-color: var(--pink);
+      color: #fff;
+    }
+
+    button.active {
+      border-color: var(--lime);
+      color: #0b0b10;
+      background: var(--lime);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      animation: none;
+    }
+
+    button.is-busy {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      opacity: 0.95;
+      cursor: wait;
+    }
+
+    .btn-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: ahhhhSpin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes ahhhhSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes ahhhhBarSlide {
+      0%   { left: -45%; }
+      100% { left: 100%; }
+    }
+
+    #activityBanner {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-14px);
+      z-index: 400;
+      min-width: 310px;
+      max-width: min(92vw, 560px);
+      background: #131722;
+      color: var(--text);
+      border: 1.5px solid var(--cyan);
+      border-radius: 10px;
+      padding: 0.72rem 1rem 0.85rem;
+      box-shadow: 4px 4px 0 var(--pink), 0 14px 34px rgba(0, 0, 0, 0.7);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      font-weight: 800;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      overflow: hidden;
+    }
+
+    #activityBanner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #activityBanner.ok {
+      border-color: var(--lime);
+      box-shadow: 4px 4px 0 rgba(163, 230, 53, 0.45), 0 14px 34px rgba(0, 0, 0, 0.7);
+    }
+
+    #activityBanner.err {
+      border-color: var(--pink);
+      box-shadow: 4px 4px 0 rgba(255, 42, 133, 0.5), 0 14px 34px rgba(0, 0, 0, 0.7);
+    }
+
+    .activity-row {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    .activity-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 3px;
+      background: rgba(34, 211, 238, 0.18);
+      overflow: hidden;
+    }
+
+    .activity-bar::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -45%;
+      width: 45%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--pink), var(--lime), var(--cyan));
+      animation: ahhhhBarSlide 1.1s ease-in-out infinite;
+    }
+
+    #activityBanner.ok .activity-bar,
+    #activityBanner.err .activity-bar {
+      display: none;
+    }
+
+    .local-drop {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.55rem;
+      border-radius: 8px;
+      border: 1px dashed #3b4259;
+      background: rgba(20, 23, 32, 0.9);
+      max-width: 100%;
+    }
+
+    .gh-box {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      background: rgba(20, 23, 32, 0.95);
+      max-width: 100%;
+    }
+
+    .local-drop.dragover {
+      border-style: solid;
+      border-color: var(--lime);
+      background: rgba(163, 230, 53, 0.1);
+    }
+
+    .local-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: var(--amber);
+      text-transform: uppercase;
+      padding: 0 0.15rem;
+    }
+
+    .gh-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: var(--cyan);
+      text-transform: uppercase;
+      padding: 0 0.15rem;
+    }
+
+    .drop-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: var(--cyan);
+      max-width: 135px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .drop-hint svg {
+      width: 14px;
+      height: 14px;
+      color: var(--amber);
+      flex-shrink: 0;
+    }
+
+    .cat-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .cat-tab {
+      padding: 0.24rem 0.58rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .cat-tab:hover {
+      border-color: var(--cyan);
+      color: var(--text);
+    }
+
+    .cat-tab.active {
+      background: var(--pink);
+      border-color: var(--pink);
+      color: #fff;
+    }
+
+    .cat-tab .cnt {
+      margin-left: 0.3rem;
+      opacity: 0.75;
+      font-size: 0.64rem;
+    }
+
     .meta-bar {
       display: flex;
       flex-wrap: wrap;
-      justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
+      justify-content: space-between;
+      gap: 0.5rem;
       color: var(--muted);
-      font-size: 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.74rem;
+      margin-bottom: 0.85rem;
     }
+
+    .meta-right {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .sort-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+    }
+
+    .sort-btn {
+      padding: 0.26rem 0.58rem;
+      font-size: 0.72rem;
+      border-color: var(--amber);
+      color: var(--amber);
+    }
+
+    .sort-btn.random-mode {
+      border-color: var(--lime);
+      color: var(--lime);
+    }
+
+    .reshuffle-btn {
+      padding: 0.26rem 0.48rem;
+      font-size: 0.76rem;
+      border-color: var(--lime);
+      color: var(--lime);
+      display: none;
+    }
+
+    .reshuffle-btn.visible {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pager {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.32rem;
+    }
+
+    .pager button {
+      padding: 0.26rem 0.54rem;
+      font-size: 0.72rem;
+    }
+
+    .pager button.next-btn {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .page-info {
+      color: var(--text);
+      padding: 0 0.22rem;
+    }
+
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 315px), 1fr));
+      gap: clamp(0.95rem, 1.6vw, 1.3rem);
+      align-content: start;
+      flex: 1;
     }
+
     .card {
-      background: var(--panel);
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
+      border-radius: 11px;
+      padding: 1.15rem 1.2rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 12px;
+      gap: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
     }
+
+    .card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    .card.is-busy {
+      border-color: var(--lime) !important;
+      box-shadow: 0 0 0 1px rgba(163, 230, 53, 0.35), 3px 3px 0 var(--pink);
+    }
+
     .card-top {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 10px;
+      gap: 0.6rem;
+      margin-bottom: 0.45rem;
     }
-    .card-title { margin: 0; font-size: 1.05rem; font-weight: 800; }
-    .badge {
-      font-size: 0.74rem;
+
+    .name {
+      font-weight: 800;
+      font-size: 1rem;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cat-badge {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.64rem;
       font-weight: 700;
       color: var(--cyan);
-      background: rgba(34, 211, 238, 0.1);
-      border: 1px solid rgba(34, 211, 238, 0.35);
-      padding: 2px 8px;
-      border-radius: 6px;
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.22);
+      border-radius: 4px;
+      padding: 0.1rem 0.45rem;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .desc {
+      color: #b7bfd2;
+      font-size: 0.83rem;
+      line-height: 1.48;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .repo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      margin-top: 0.45rem;
+      padding: 0.14rem 0.48rem;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.68rem;
+      text-decoration: none;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .desc { margin: 8px 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
-    .repo-chip {
-      display: inline-block;
-      margin-top: 8px;
+
+    .repo-pill:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .site-link {
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .site-link:hover {
+      text-decoration: underline;
+    }
+
+    .foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding-top: 0.68rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .foot button {
+      padding: 0.34rem 0.72rem;
+      font-size: 0.76rem;
+    }
+
+    .actions { display: flex; gap: 0.38rem; }
+
+    .installed {
+      color: var(--lime);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .upd-badge {
+      color: var(--amber);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .status-toast {
+      margin-top: 0.85rem;
+      padding: 0.72rem 0.95rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--cyan);
+      background: #171d2c;
+      box-shadow: 3px 3px 0 rgba(34, 211, 238, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: #f8fafc;
+      display: none;
+    }
+
+    .status-toast.show { display: block; }
+    .status-toast.ok {
+      border-color: var(--lime);
+      color: var(--lime);
+      box-shadow: 3px 3px 0 rgba(163, 230, 53, 0.22);
+    }
+    .status-toast.err {
+      border-color: var(--pink);
+      color: #ff99c4;
+      box-shadow: 3px 3px 0 rgba(255, 42, 133, 0.28);
+    }
+
+    footer {
+      margin-top: 1.25rem;
+      padding-top: 0.7rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 7, 10, 0.82);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+    }
+
+    .backdrop.open { display: flex; }
+
+    .modal {
+      width: 100%;
+      max-width: 660px;
+      max-height: 88dvh;
+      overflow-y: auto;
+      background: #131620;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 1.3rem 1.4rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .dice-modal {
+      width: 100%;
+      max-width: 940px;
+      max-height: 90dvh;
+      overflow-y: auto;
+      background: #131620;
+      border: 2px solid var(--lime);
+      border-radius: 14px;
+      padding: 1.2rem 1.35rem;
+      box-shadow: 6px 6px 0 var(--pink);
+    }
+
+    .updates-modal {
+      width: 100%;
+      max-width: 940px;
+      max-height: 90dvh;
+      overflow-y: auto;
+      background: #131620;
+      border: 2px solid var(--amber);
+      border-radius: 14px;
+      padding: 1.2rem 1.35rem;
+      box-shadow: 6px 6px 0 var(--pink);
+    }
+
+    .dice-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.85rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .dice-stage {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .die {
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ffffff 0%, #e5e7eb 100%);
+      color: #0c0d11;
+      border: 2px solid #0c0d11;
+      box-shadow: 3px 3px 0 var(--pink);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 8px;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    @keyframes diceTumble {
+      0%   { transform: rotate(0deg) scale(1); }
+      25%  { transform: rotate(-18deg) scale(1.12); }
+      50%  { transform: rotate(16deg) scale(0.95); }
+      75%  { transform: rotate(-12deg) scale(1.08); }
+      100% { transform: rotate(0deg) scale(1); }
+    }
+
+    .die.rolling { animation: diceTumble 0.45s ease-in-out infinite; }
+
+    .pip {
+      width: 8.5px;
+      height: 8.5px;
+      border-radius: 50%;
+      background: transparent;
+      margin: auto;
+    }
+
+    .pip.on { background: #0c0d11; }
+    .pip.on.hot { background: var(--pink); }
+
+    .dice-headline {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--lime);
+    }
+
+    .updates-headline {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--amber);
+    }
+
+    .dice-sub {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.76rem;
       color: var(--muted);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      padding: 2px 7px;
+      margin-top: 0.15rem;
+    }
+
+    .dice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+      gap: 0.95rem;
+    }
+
+    .faq-item {
+      margin-bottom: 0.8rem;
+      padding: 0.7rem 0.85rem;
+      background: #171b27;
+      border-left: 3px solid var(--cyan);
       border-radius: 6px;
     }
-    .card-foot {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 8px;
+
+    .faq-q {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 800;
+      font-size: 0.82rem;
+      color: var(--text);
+      margin-bottom: 0.25rem;
     }
-    .status {
-      margin-bottom: 12px;
+
+    .faq-a {
+      color: #c2c9d8;
+      font-size: 0.83rem;
+      line-height: 1.5;
+    }
+
+    .faq-a code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--lime);
+      padding: 0.08rem 0.34rem;
+      border-radius: 4px;
+      font-size: 0.76rem;
+    }
+
+    .drawer {
+      width: 100%;
+      max-width: 520px;
+      max-height: 86dvh;
+      overflow-y: auto;
+      background: #141722;
+      border: 1.5px solid var(--pink);
+      border-radius: 12px;
+      padding: 1.35rem;
+    }
+
+    .drawer h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.18rem;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .drawer .cat-line {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.76rem;
       color: var(--cyan);
-      font-size: 0.88rem;
-      min-height: 1.2em;
+      margin-bottom: 0.85rem;
     }
-    footer {
-      margin-top: 28px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
+
+    .drawer p {
+      color: #c4cad8;
+      line-height: 1.5;
+      margin: 0 0 1.2rem;
+      font-size: 0.9rem;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+    }
+
+    .drawer-notes {
+      margin: 0 0 1.15rem;
+      padding: 0.65rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #10131c;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.74rem;
+      color: #b7bfd2;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .drawer-notes-title {
+      color: var(--amber);
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+    }
+
+    .drawer-foot {
       display: flex;
-      justify-content: space-between;
+      flex-wrap: wrap;
       align-items: center;
-      color: var(--muted);
-      font-size: 0.84rem;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border);
     }
+
+    .drawer-actions { display: flex; gap: 0.45rem; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="brand">Ahhhh <span class="cli-pill">ahhhh</span></div>
-      <input id="searchInput" class="search-box" type="search" placeholder="Search apps or categories..." />
-      <button id="installedBtn" class="btn">Installed</button>
-      <button id="diceBtn" class="btn" title="Random app">🎲</button>
+  <div id="activityBanner" aria-live="polite">
+    <div class="activity-row">
+      <span class="btn-spinner" id="activitySpinner"></span>
+      <span id="activityText">Working...</span>
+    </div>
+    <div class="activity-bar"></div>
+  </div>
+
+  <header>
+    <div class="header-left">
+      <div class="brand" id="resetBrand" title="Reset filters & go to page 1">
+        <h1>APPAPPAPP</h1>
+        <span class="sub">ahhhh</span>
+      </div>
+      <input id="q" type="search" placeholder="Search apps or categories..." />
+      <button type="button" id="installedBtn">Installed</button>
+      <button type="button" class="dice-btn" id="openDiceBtn" title="Roll the dice for 1–6 random apps">
+        <span class="btn-die" aria-hidden="true">
+          <span class="bpip on hot"></span><span class="bpip"></span><span class="bpip on"></span>
+          <span class="bpip"></span><span class="bpip on hot"></span><span class="bpip"></span>
+          <span class="bpip on"></span><span class="bpip"></span><span class="bpip on hot"></span>
+        </span>
+      </button>
     </div>
 
-    <div class="bar-row">
-      <div class="box">
-        <span class="box-label">GITHUB RELEASE</span>
-        <input id="ghRepoInput" class="input-sm" type="text" placeholder="owner/repo or URL" />
-        <button id="ghInspectBtn" class="btn btn-cyan">Inspect</button>
-        <button id="ghInstallBtn" class="btn btn-pink">Install</button>
-      </div>
-
-      <div id="dropZone" class="box">
-        <span class="box-label amber">LOCAL .APPIMAGE</span>
-        <input id="localFileInput" type="file" accept=".AppImage,.appimage,.tar.gz,.tgz,.tar.xz,.zip" hidden />
-        <button id="pickFileBtn" class="btn">Pick</button>
-        <span id="dropHint" style="color:var(--muted);font-size:0.84rem;">drop .AppImage</span>
-        <input id="localNameInput" class="input-sm" type="text" placeholder="Optional name" />
-        <button id="localInstallBtn" class="btn btn-pink">Install</button>
-      </div>
+    <div class="header-center">
+      <button type="button" class="updates-pill" id="updatesPillBtn" title="View available updates">
+        <span class="upd-dot" aria-hidden="true"></span>
+        <span id="updatesPillLabel">0 Updates</span>
+      </button>
     </div>
 
-    <div id="cats" class="cats"></div>
-    <div id="status" class="status"></div>
+    <div class="header-right">
+      <div class="gh-box" title="Install any Linux AppImage, tarball, or binary directly from GitHub Releases">
+        <span class="gh-tag">GitHub Release</span>
+        <input type="text" class="gh-repo-input" id="ghRepoInput" placeholder="owner/repo or URL" />
+        <button type="button" class="cyan-btn" id="ghInspectBtn">Inspect</button>
+        <button type="button" class="primary" id="ghInstallBtn">Install</button>
+      </div>
 
-    <div class="meta-bar">
-      <span id="countLabel">0 apps</span>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button id="shuffleBtn" class="btn">Sorted: Random</button>
-        <button id="firstBtn" class="btn">First</button>
-        <button id="prevBtn" class="btn">Prev</button>
-        <span id="pageLabel">Page 1 / 1</span>
-        <button id="nextBtn" class="btn">Next Page</button>
-        <button id="lastBtn" class="btn">Last</button>
+      <div class="local-drop" id="localDrop" title="Install a local .AppImage, .tar.gz, .tar.xz, or .zip onto your system">
+        <span class="local-tag">Local .AppImage</span>
+        <input type="file" id="fileInput" accept=".AppImage,.appimage,.tar.gz,.tgz,.tar.xz,.zip" hidden />
+        <button type="button" id="pickFileBtn">Pick</button>
+        <span class="drop-hint" id="fileLabel">
+          <span>drop .AppImage</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3" />
+            <line x1="12" y1="2" x2="12" y2="6" />
+            <line x1="12" y1="18" x2="12" y2="22" />
+            <line x1="2" y1="12" x2="6" y2="12" />
+            <line x1="18" y1="12" x2="22" y2="12" />
+          </svg>
+        </span>
+        <input type="text" class="local-name" id="localName" placeholder="Optional name" />
+        <button type="button" class="primary" id="uploadBtn">Install</button>
       </div>
     </div>
+  </header>
 
-    <div id="grid" class="grid"></div>
+  <div class="cat-strip" id="catStrip"></div>
 
-    <footer>
-      <span>Ahhhh // ahhhh · Linux AppImage &amp; Release Manager</span>
-      <button id="helpBtn" class="btn">How It Works &amp; Uninstall</button>
-    </footer>
+  <div class="meta-bar">
+    <div id="count">Loading catalog...</div>
+    <div class="meta-right">
+      <div class="sort-group">
+        <button type="button" class="sort-btn random-mode" id="sortBtn" title="Toggle Random or A–Z order">Sorted: Random</button>
+        <button type="button" class="reshuffle-btn visible" id="reshuffleBtn" title="Deal a fresh random order">↻</button>
+      </div>
+      <div class="pager" id="topPager"></div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="status-toast" id="statusToast"></div>
+
+  <footer>
+    <span>APPAPPAPP // ahhhh · Universal Linux AppImage &amp; GitHub Release Installer</span>
+    <div>
+      <button type="button" id="openFaqBtn">How It Works &amp; Uninstall</button>
+    </div>
+  </footer>
+
+  <!-- Available Updates Pop-Up Modal -->
+  <div class="backdrop" id="updatesBackdrop">
+    <div class="updates-modal">
+      <div class="dice-top">
+        <div class="dice-stage">
+          <div class="die" id="updatesDieFace"></div>
+          <div>
+            <div class="updates-headline" id="updatesHeadline">Available Updates</div>
+            <div class="dice-sub" id="updatesSub">Background release checks active · single admin prompt</div>
+          </div>
+        </div>
+        <div class="drawer-actions">
+          <button type="button" class="update" id="updateAllBtn">Update All</button>
+          <button type="button" id="closeUpdatesBtn">Close</button>
+        </div>
+      </div>
+      <div class="dice-grid" id="updatesGrid"></div>
+    </div>
+  </div>
+
+  <!-- Animated Dice Pop-Up Modal -->
+  <div class="backdrop" id="diceBackdrop">
+    <div class="dice-modal">
+      <div class="dice-top">
+        <div class="dice-stage">
+          <div class="die" id="dieFace"></div>
+          <div>
+            <div class="dice-headline" id="diceHeadline">Rolling...</div>
+            <div class="dice-sub" id="diceSub">Pulling random picks from the catalog</div>
+          </div>
+        </div>
+        <div class="drawer-actions">
+          <button type="button" class="dice-btn" id="rerollBtn" title="Roll Again">
+            <span class="btn-die" aria-hidden="true">
+              <span class="bpip on hot"></span><span class="bpip"></span><span class="bpip on"></span>
+              <span class="bpip"></span><span class="bpip on hot"></span><span class="bpip"></span>
+              <span class="bpip on"></span><span class="bpip"></span><span class="bpip on hot"></span>
+            </span>
+          </button>
+          <button type="button" id="closeDiceBtn">Close</button>
+        </div>
+      </div>
+      <div class="dice-grid" id="diceGrid"></div>
+    </div>
+  </div>
+
+  <!-- Help & Uninstall Modal -->
+  <div class="backdrop" id="faqBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>How It Works &amp; Clean Uninstall</h2>
+        <button type="button" id="closeFaqBtn">Close</button>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">1. Installing from Catalog, GitHub Releases, or Local Files</div>
+        <div class="faq-a">
+          Click <strong>Install</strong> on any catalog entry, paste any <code>owner/repo</code> into the <strong>GitHub Release</strong> bar, or drop a local <code>.AppImage</code> / <code>.tar.gz</code> / <code>.tar.xz</code> / <code>.zip</code> file. <code>ahhhh</code> automatically picks the matching Linux architecture asset, unpacks it under <code>/opt/appimages/</code>, links the binary in <code>/usr/local/bin/</code>, and registers a desktop launcher.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">2. Common Linux AppImage Snags &amp; GitHub Rate Limits</div>
+        <div class="faq-a">
+          If an AppImage refuses to launch on newer distros, check FUSE support (<code>fuse3</code> or <code>libfuse2</code>). If you check many GitHub repos frequently, set <code>GITHUB_TOKEN</code> in your environment to avoid unauthenticated API rate limits.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">3. Removing Installed Apps</div>
+        <div class="faq-a">
+          Click <strong>Remove</strong> on any installed app (or run <code>ahhhh remove &lt;name&gt;</code> in a terminal) to cleanly delete its files under <code>/opt/appimages/</code>, command symlink, icon, and menu entry.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Inspector Modal -->
+  <div class="backdrop" id="drawerBackdrop" style="z-index:250;">
+    <div class="drawer" id="drawer">
+      <h2 id="dName"></h2>
+      <div class="cat-line" id="dCat"></div>
+      <p id="dDesc"></p>
+      <div class="drawer-notes" id="dNotes" style="display:none;">
+        <div class="drawer-notes-title" id="dNotesTitle">Latest Release Notes</div>
+        <div id="dNotesBody"></div>
+      </div>
+      <div class="drawer-foot">
+        <span id="dStatus" style="font-family:monospace;font-size:0.78rem;"></span>
+        <div class="drawer-actions" id="dActions"></div>
+      </div>
+    </div>
   </div>
 
   <script>
-    const state = {
-      items: [],
-      installed: {},
-      category: "All",
-      search: "",
-      onlyInstalled: false,
-      page: 1,
-      pageSize: 6,
-      selectedFile: null
+    const TARGET_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`;
+
+    const PIP_PATTERNS = {
+      1: [4],
+      2: [2, 6],
+      3: [2, 4, 6],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8],
     };
 
-    const $ = (id) => document.getElementById(id);
+    const SEARCH_SYNONYMS = {
+      browser: ['browser', 'webbrowser', 'firefox', 'chromium', 'zen', 'floorp', 'vivaldi', 'librewolf', 'mullvad', 'ungoogled', 'waterfox'],
+      video: ['video', 'audiovideo', 'player', 'media', 'mpv', 'vlc', 'stremio', 'jellyfin'],
+      music: ['music', 'audio', 'audiovideo', 'player', 'synth', 'podcast'],
+      chat: ['chat', 'instantmessaging', 'messaging', 'irc', 'matrix', 'discord', 'telegram', 'signal'],
+      notes: ['notes', 'note', 'markdown', 'wiki', 'journal', 'office', 'texteditor'],
+      git: ['git', 'development', 'ide', 'code', 'github', 'gitlab'],
+      emulator: ['emulator', 'emulators', 'game', 'retro', 'nes', 'snes', 'n64', 'ps1', 'ps2', 'psp'],
+      photo: ['photo', 'photography', 'graphics', 'image', 'raw', 'editor', 'paint', 'draw'],
+    };
 
-    function setStatus(msg) {
-      $("status").textContent = msg || "";
-    }
+    const CRATE_ORDER = [
+      'GitHub Releases',
+      'Web & Browsers',
+      'Audio & Video',
+      'Dev & Code',
+      'Games',
+      'Graphics & 3D',
+      'Network & Chat',
+      'Office & Notes',
+      'System & Tools',
+      'Science & Edu',
+      'Other',
+    ];
 
-    function filteredItems() {
-      const q = state.search.trim().toLowerCase();
-      return state.items.filter((it) => {
-        const slug = (it.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-        if (state.onlyInstalled && !state.installed[slug]) return false;
-        if (state.category !== "All") {
-          const cats = (it.categories || []).join(" ");
-          if (!cats.toLowerCase().includes(state.category.toLowerCase())) return false;
-        }
-        if (!q) return true;
-        const hay = `${it.name || ""} ${it.description || ""} ${(it.categories || []).join(" ")} ${(it.github || []).join(" ")}`.toLowerCase();
-        return hay.includes(q);
+    function stripHtml(raw) {
+      if (!raw) return '';
+      const doc = new DOMParser().parseFromString(String(raw), 'text/html');
+      doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      doc.querySelectorAll('p, li, div, h1, h2, h3, h4').forEach(el => {
+        el.append('\n');
       });
+      return (doc.body.textContent || '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     }
 
-    function renderCats() {
-      const counts = { All: state.items.length };
-      for (const it of state.items) {
-        const c = (it.categories && it.categories[0]) || "Other";
-        counts[c] = (counts[c] || 0) + 1;
+    function mapCrate(app) {
+      const raw = (app.categories || []).map(c => c.toLowerCase());
+      if (raw.includes('github release')) {
+        return 'GitHub Releases';
       }
-      const order = ["All", "Web & Browsers", "Audio & Video", "Dev & Code", "Games", "Graphics & 3D", "Network & Chat", "Office & Notes", "System & Tools", "Science & Edu", "Other"];
-      $("cats").innerHTML = order
-        .filter((k) => counts[k] !== undefined)
-        .map((k) => `<button class="cat-btn ${state.category === k ? "active" : ""}" data-cat="${k}">${k} ${counts[k]}</button>`)
-        .join("");
+      const blob = `${app.name || ''} ${stripHtml(app.description)}`.toLowerCase();
 
-      $("cats").querySelectorAll(".cat-btn").forEach((b) => {
-        b.onclick = () => {
-          state.category = b.dataset.cat;
-          state.page = 1;
-          render();
-        };
-      });
+      if (raw.includes('webbrowser') || /\b(browser|firefox|chromium|vivaldi|librewolf|floorp|zen browser)\b/.test(blob)) {
+        return 'Web & Browsers';
+      }
+      if (raw.some(c => ['audiovideo', 'audio', 'video', 'music', 'player', 'sequencer'].includes(c))) {
+        return 'Audio & Video';
+      }
+      if (raw.some(c => ['development', 'ide', 'webdevelopment'].includes(c))) {
+        return 'Dev & Code';
+      }
+      if (raw.some(c => ['game', 'emulator', 'strategygame', 'adventuregame'].includes(c))) {
+        return 'Games';
+      }
+      if (raw.some(c => ['graphics', 'photography', 'viewer'].includes(c))) {
+        return 'Graphics & 3D';
+      }
+      if (raw.some(c => ['network', 'chat', 'instantmessaging', 'videoconference', 'news', 'hamradio', 'security'].includes(c))) {
+        return 'Network & Chat';
+      }
+      if (raw.some(c => ['office', 'texteditor', 'wordprocessor'].includes(c))) {
+        return 'Office & Notes';
+      }
+      if (raw.some(c => ['system', 'utility', 'settings', 'terminalemulator', 'consoleonly', 'x-tool', 'x-utilities', 'application'].includes(c))) {
+        return 'System & Tools';
+      }
+      if (raw.some(c => ['science', 'education', 'astronomy', 'electronics', 'engineering', 'finance', 'database'].includes(c))) {
+        return 'Science & Edu';
+      }
+      return 'Other';
     }
 
-    function render() {
-      renderCats();
-      const list = filteredItems();
-      const totalPages = Math.max(1, Math.ceil(list.length / state.pageSize));
-      if (state.page > totalPages) state.page = totalPages;
-      const start = (state.page - 1) * state.pageSize;
-      const slice = list.slice(start, start + state.pageSize);
+    function findDownloadLink(app) {
+      const links = app.links || [];
+      const gh = links.find(l => l.type === 'GitHub');
+      if (gh && gh.url) return gh.url;
+      const direct = links.find(l => (l.url || '').toLowerCase().endsWith('.appimage'));
+      return direct ? direct.url : '';
+    }
 
-      $("countLabel").textContent = `${list.length} apps`;
-      $("pageLabel").textContent = `Page ${state.page} / ${totalPages}`;
+    function findWebsiteLink(app) {
+      const links = app.links || [];
+      const preferred = links.find(l => {
+        const u = (l.url || '').trim();
+        return /^https?:\/\//i.test(u) && !/github\.com/i.test(u) && (l.type === 'Home' || l.type === 'Website' || !u.toLowerCase().endsWith('.appimage'));
+      });
+      if (preferred) return preferred.url.trim();
+      const anyHttp = links.find(l => /^https?:\/\//i.test((l.url || '').trim()));
+      return anyHttp ? anyHttp.url.trim() : '';
+    }
 
-      if (!slice.length) {
-        $("grid").innerHTML = `<p style="color:var(--muted);">No matching apps found.</p>`;
+    function extractGitHubSlug(app) {
+      const links = app.links || [];
+      for (const l of links) {
+        const raw = (l.url || '').trim();
+        if (!raw) continue;
+        if (l.type === 'GitHub' || /^https?:\/\/(www\.)?github\.com\//i.test(raw) || /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(raw)) {
+          const slug = raw
+            .replace(/^https?:\/\/(www\.)?github\.com\//i, '')
+            .replace(/^\/+|\/+$/g, '')
+            .split('/')
+            .slice(0, 2)
+            .join('/');
+          if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(slug)) {
+            return slug;
+          }
+        }
+      }
+      return '';
+    }
+
+    function findGitHubURL(app) {
+      const slug = extractGitHubSlug(app);
+      return slug ? `https://github.com/${slug}` : '';
+    }
+
+    function isInstallable(app) {
+      return Boolean(app.installed || findDownloadLink(app));
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '';
+      const mb = bytes / (1024 * 1024);
+      return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+    }
+
+    let apps = [];
+    let appByKey = new Map();
+    let selectedCrate = '';
+    let onlyInstalled = false;
+    let sortMode = 'random';
+    let randomRank = new Map();
+    let currentPage = 1;
+    let totalPagesCache = 1;
+    let pageSize = 12;
+    let droppedFile = null;
+    let currentDiceApps = [];
+    let drawerToken = 0;
+    let bannerTimer = null;
+
+    function appKey(a) {
+      return a.slug || a.name;
+    }
+
+    function shuffleArray(list) {
+      const arr = [...list];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function assignRandomRanks(list) {
+      randomRank = new Map();
+      shuffleArray(list).forEach((a, i) => randomRank.set(appKey(a), i));
+    }
+
+    function computePageSize() {
+      const grid = document.getElementById('grid');
+      const w = grid.clientWidth || window.innerWidth;
+      const gap = Math.max(15, Math.min(21, window.innerWidth * 0.016));
+      const cols = Math.max(1, Math.floor((w + gap) / (315 + gap)));
+
+      const rectTop = grid.getBoundingClientRect().top || 195;
+      const availH = Math.max(320, window.innerHeight - rectTop - 68);
+      const cardPitch = 186;
+      const rows = Math.max(2, Math.min(3, Math.floor(availH / cardPitch)));
+
+      pageSize = Math.max(4, cols * rows);
+    }
+
+    function showToast(msg, tone = 'info') {
+      const el = document.getElementById('statusToast');
+      el.textContent = msg;
+      el.classList.remove('ok', 'err');
+      if (tone === 'ok') el.classList.add('ok');
+      if (tone === 'err') el.classList.add('err');
+      el.classList.add('show');
+    }
+
+    function beginWork(msg, btn, busyLabel) {
+      clearTimeout(bannerTimer);
+      const banner = document.getElementById('activityBanner');
+      const spinner = document.getElementById('activitySpinner');
+      const text = document.getElementById('activityText');
+      spinner.style.display = 'inline-block';
+      text.textContent = msg;
+      banner.className = 'show';
+      showToast(msg, 'info');
+
+      if (btn) {
+        btn.dataset.origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('is-busy');
+        btn.innerHTML = `<span class="btn-spinner"></span><span>${busyLabel || 'Working...'}</span>`;
+        const card = btn.closest('.card');
+        if (card) card.classList.add('is-busy');
+      }
+    }
+
+    function endWork(msg, isError, btn) {
+      const banner = document.getElementById('activityBanner');
+      const spinner = document.getElementById('activitySpinner');
+      const text = document.getElementById('activityText');
+      spinner.style.display = 'none';
+      text.textContent = msg;
+      banner.className = 'show ' + (isError ? 'err' : 'ok');
+      showToast(msg, isError ? 'err' : 'ok');
+
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('is-busy');
+        if (btn.dataset.origHtml !== undefined) {
+          btn.innerHTML = btn.dataset.origHtml;
+          delete btn.dataset.origHtml;
+        }
+        const card = btn.closest('.card');
+        if (card) card.classList.remove('is-busy');
+      }
+
+      bannerTimer = setTimeout(() => {
+        banner.classList.remove('show');
+      }, isError ? 5000 : 3000);
+    }
+
+    function friendlyError(raw) {
+      const txt = (raw || '').trim() || 'Something went wrong during the operation.';
+      const lower = txt.toLowerCase();
+      if (lower.includes('fuse')) {
+        return `${txt} — Tip: AppImages often need FUSE installed (e.g. fuse3 or libfuse2).`;
+      }
+      if (lower.includes('permission') || lower.includes('polkit') || lower.includes('cancelled')) {
+        return `${txt} — Tip: System-wide install/remove requires admin confirmation via pkexec.`;
+      }
+      if (lower.includes('rate limit') || lower.includes('403')) {
+        return `${txt} — Tip: Set GITHUB_TOKEN in your environment to raise GitHub API limits.`;
+      }
+      return txt;
+    }
+
+    function renderDieInto(el, val) {
+      const active = PIP_PATTERNS[val] || PIP_PATTERNS[1];
+      el.innerHTML = Array.from({ length: 9 }, (_, i) => {
+        const on = active.includes(i);
+        const hot = on && (val === 1 || val === 6);
+        return `<span class="pip ${on ? 'on' : ''} ${hot ? 'hot' : ''}"></span>`;
+      }).join('');
+    }
+
+    function renderDieFace(val) {
+      renderDieInto(document.getElementById('dieFace'), val);
+    }
+
+    function getUpdateableApps() {
+      return apps.filter(a => a.installed && a.update_available);
+    }
+
+    function syncUpdatesButton() {
+      const updatables = getUpdateableApps();
+      const count = updatables.length;
+      const pill = document.getElementById('updatesPillBtn');
+      const label = document.getElementById('updatesPillLabel');
+
+      if (count > 0) {
+        label.textContent = `${count} ${count === 1 ? 'Update' : 'Updates'}`;
+        pill.classList.add('visible');
+      } else {
+        pill.classList.remove('visible');
+        closeUpdatesPopup();
+      }
+    }
+
+    function renderUpdateTileHtml(a) {
+      const dlUrl = findDownloadLink(a);
+      const ghUrl = findGitHubURL(a);
+      const ghSlug = extractGitHubSlug(a);
+      const key = appKey(a);
+      const safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeName = (a.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+      const crate = mapCrate(a);
+      const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const cleanDesc = stripHtml(a.description) || 'No description provided.';
+      const repoHtml = ghSlug
+        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">${ghSlug}</a>`
+        : '';
+      const tagText = a.installed_tag && a.latest_tag
+        ? `${a.installed_tag} → ${a.latest_tag}`
+        : `Update ${a.latest_tag || ''}`.trim();
+
+      const actionBtn = dlUrl
+        ? `<button type="button" class="update" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Update Now</button>`
+        : `<span style="color:var(--muted);font-size:0.72rem;">Website only</span>`;
+
+      return `
+        <div class="card" onclick="openByKey('${safeKey}')">
+          <div>
+            <div class="card-top">
+              <div class="name" title="${(a.name || '').replace(/"/g, '&quot;')}">${a.name}</div>
+              <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
+            </div>
+            <div class="desc">${cleanDesc}</div>
+            ${repoHtml}
+          </div>
+          <div class="foot">
+            <div><span class="upd-badge">${tagText}</span></div>
+            <div class="actions">${actionBtn}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUpdatesPopupContent() {
+      const updatables = getUpdateableApps();
+      const dieVal = Math.min(6, Math.max(1, updatables.length));
+      renderDieInto(document.getElementById('updatesDieFace'), dieVal);
+
+      document.getElementById('updatesHeadline').textContent =
+        `${updatables.length} ${updatables.length === 1 ? 'Update' : 'Updates'} Available`;
+      document.getElementById('updatesSub').textContent =
+        'Checked automatically in the background · single admin prompt';
+
+      const grid = document.getElementById('updatesGrid');
+      const updateAllBtn = document.getElementById('updateAllBtn');
+
+      if (updatables.length === 0) {
+        grid.innerHTML = `<div style="color:var(--muted);padding:1rem 0;">Everything is up to date.</div>`;
+        updateAllBtn.disabled = true;
         return;
       }
 
-      $("grid").innerHTML = slice.map((it) => {
-        const name = it.name || "App";
-        const cat = (it.categories && it.categories[0]) || "Other";
-        const repo = Array.isArray(it.github) && it.github[0] ? it.github[0] : "";
-        return `
-          <article class="card">
-            <div>
-              <div class="card-top">
-                <h3 class="card-title">${name}</h3>
-                <span class="badge">${cat}</span>
-              </div>
-              <p class="desc">${it.description || ""}</p>
-              ${repo ? `<span class="repo-chip">${repo}</span>` : ""}
-            </div>
-            <div class="card-foot">
-              <button class="btn btn-pink install-cat-btn" data-name="${name}">Install</button>
-            </div>
-          </article>
-        `;
-      }).join("");
+      updateAllBtn.disabled = false;
+      grid.innerHTML = updatables.map(renderUpdateTileHtml).join('');
+    }
 
-      $("grid").querySelectorAll(".install-cat-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const appName = btn.dataset.name;
-          const match = state.items.find((x) => x.name === appName);
-          const dl = match && Array.isArray(match.links) && match.links[0] ? match.links[0].url : "";
-          if (!dl) {
-            setStatus(`No direct download URL listed for ${appName}.`);
-            return;
-          }
-          setStatus(`Installing ${appName}...`);
-          const res = await fetch("/api/install/url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: appName, url: dl })
-          });
-          const data = await res.json();
-          setStatus(data.error ? `Error: ${data.error}` : `Installed ${appName} via Ahhhh.`);
-          await loadInstalled();
+    function openUpdatesPopup() {
+      renderUpdatesPopupContent();
+      document.getElementById('updatesBackdrop').classList.add('open');
+    }
+
+    function closeUpdatesPopup() {
+      document.getElementById('updatesBackdrop').classList.remove('open');
+    }
+
+    async function updateAllApps() {
+      const updatables = getUpdateableApps().filter(a => Boolean(findDownloadLink(a)));
+      if (updatables.length === 0) return;
+
+      const btn = document.getElementById('updateAllBtn');
+      const closeBtn = document.getElementById('closeUpdatesBtn');
+      closeBtn.disabled = true;
+      beginWork(
+        `Batch updating ${updatables.length} ${updatables.length === 1 ? 'app' : 'apps'}... (one admin prompt)`,
+        btn,
+        `Updating (${updatables.length})...`
+      );
+
+      try {
+        const payload = {
+          items: updatables.map(a => ({ name: a.name, url: findDownloadLink(a) }))
         };
-      });
-    }
-
-    async function loadFeed() {
-      try {
-        const res = await fetch("/api/feed");
-        const data = await res.json();
-        state.items = Array.isArray(data.items) ? data.items : [];
+        const res = await fetch('/api/update-all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeUpdatesPopup();
+        await init();
+        endWork(`Updated ${updatables.length} ${updatables.length === 1 ? 'app' : 'apps'}.`, false, btn);
       } catch (e) {
-        state.items = [];
+        await init();
+        endWork(friendlyError(e.message), true, btn);
+      } finally {
+        closeBtn.disabled = false;
       }
-      render();
     }
 
-    async function loadInstalled() {
-      try {
-        const res = await fetch("/api/installed");
-        const data = await res.json();
-        const map = {};
-        for (const a of (data.apps || [])) {
-          if (a.slug) map[a.slug] = a;
+    function rollDice() {
+      const filtered = getFilteredApps();
+      const installableFiltered = filtered.filter(isInstallable);
+      const installableAll = apps.filter(isInstallable);
+
+      const pool = installableFiltered.length >= 6
+        ? installableFiltered
+        : (installableAll.length >= 6 ? installableAll : (filtered.length > 0 ? filtered : apps));
+
+      if (pool.length === 0) return;
+
+      const finalVal = Math.floor(Math.random() * 6) + 1;
+      currentDiceApps = shuffleArray(pool).slice(0, Math.min(finalVal, pool.length));
+
+      const die = document.getElementById('dieFace');
+      const rerollBtn = document.getElementById('rerollBtn');
+      const diceGrid = document.getElementById('diceGrid');
+      rerollBtn.disabled = true;
+      die.classList.add('rolling');
+      diceGrid.innerHTML = '';
+      document.getElementById('diceHeadline').textContent = 'Rolling...';
+      document.getElementById('diceSub').textContent = 'Pulling random picks from the catalog';
+
+      let ticks = 0;
+      const timer = setInterval(() => {
+        ticks++;
+        renderDieFace(((ticks - 1) % 6) + 1);
+        if (ticks >= 7) {
+          clearInterval(timer);
+          die.classList.remove('rolling');
+          renderDieFace(finalVal);
+          const n = currentDiceApps.length;
+          document.getElementById('diceHeadline').textContent = `${n} Random ${n === 1 ? 'App' : 'Apps'}`;
+          document.getElementById('diceSub').textContent =
+            selectedCrate ? `Pulled from ${selectedCrate}` : 'Pulled from the catalog';
+          diceGrid.innerHTML = currentDiceApps.map(a => renderAppCardHtml(a)).join('');
+          rerollBtn.disabled = false;
         }
-        state.installed = map;
-      } catch (_) {}
+      }, 65);
     }
 
-    $("searchInput").oninput = (e) => { state.search = e.target.value; state.page = 1; render(); };
-    $("installedBtn").onclick = () => { state.onlyInstalled = !state.onlyInstalled; state.page = 1; render(); };
-    $("shuffleBtn").onclick = () => {
-      for (let i = state.items.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [state.items[i], state.items[j]] = [state.items[j], state.items[i]];
-      }
-      state.page = 1;
-      render();
-    };
-    $("diceBtn").onclick = () => {
-      const list = filteredItems();
-      if (!list.length) return;
-      const pick = list[Math.floor(Math.random() * list.length)];
-      setStatus(`🎲 Picked: ${pick.name}`);
-    };
-    $("firstBtn").onclick = () => { state.page = 1; render(); };
-    $("prevBtn").onclick = () => { if (state.page > 1) { state.page--; render(); } };
-    $("nextBtn").onclick = () => {
-      const total = Math.max(1, Math.ceil(filteredItems().length / state.pageSize));
-      if (state.page < total) { state.page++; render(); }
-    };
-    $("lastBtn").onclick = () => {
-      state.page = Math.max(1, Math.ceil(filteredItems().length / state.pageSize));
-      render();
-    };
+    function openDicePopup() {
+      document.getElementById('diceBackdrop').classList.add('open');
+      rollDice();
+    }
 
-    $("ghInspectBtn").onclick = async () => {
-      const repo = $("ghRepoInput").value.trim();
-      const name = $("localNameInput").value.trim();
-      if (!repo) return;
-      setStatus(`Inspecting ${repo}...`);
-      const res = await fetch(`/api/github/inspect?repo=${encodeURIComponent(repo)}&name=${encodeURIComponent(name)}`);
-      const data = await res.json();
-      setStatus(data.error ? `Error: ${data.error}` : `${data.repo} ${data.tag} -> ${data.asset_name} (${data.kind})`);
-    };
+    function closeDicePopup() {
+      document.getElementById('diceBackdrop').classList.remove('open');
+    }
 
-    $("ghInstallBtn").onclick = async () => {
-      const repo = $("ghRepoInput").value.trim();
-      const name = $("localNameInput").value.trim();
-      if (!repo) return;
-      setStatus(`Installing from ${repo}...`);
-      const res = await fetch("/api/install/url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, url: repo })
+    function renderCategories() {
+      const counts = new Map(CRATE_ORDER.map(c => [c, 0]));
+      apps.forEach(a => {
+        const cr = mapCrate(a);
+        counts.set(cr, (counts.get(cr) || 0) + 1);
       });
-      const data = await res.json();
-      setStatus(data.error ? `Error: ${data.error}` : `Installed from ${repo} via Ahhhh.`);
-      await loadInstalled();
-    };
 
-    $("pickFileBtn").onclick = () => $("localFileInput").click();
-    $("localFileInput").onchange = (e) => {
-      const f = e.target.files && e.target.files[0];
-      if (f) {
-        state.selectedFile = f;
-        $("dropHint").textContent = f.name;
+      const strip = document.getElementById('catStrip');
+      const allBtn = `<button type="button" class="cat-tab ${selectedCrate === '' ? 'active' : ''}" data-crate="">All<span class="cnt">${apps.length}</span></button>`;
+      const tabs = CRATE_ORDER
+        .filter(c => (counts.get(c) || 0) > 0)
+        .map(c => `<button type="button" class="cat-tab ${selectedCrate === c ? 'active' : ''}" data-crate="${c.replace(/"/g, '&quot;')}">${c}<span class="cnt">${counts.get(c)}</span></button>`)
+        .join('');
+
+      strip.innerHTML = allBtn + tabs;
+      strip.querySelectorAll('.cat-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedCrate = btn.dataset.crate;
+          currentPage = 1;
+          renderCategories();
+          renderGrid();
+        });
+      });
+    }
+
+    async function init(checkUpdates = false) {
+      const res = await fetch('/api/apps' + (checkUpdates ? '?check_updates=1' : ''));
+      apps = await res.json();
+      appByKey = new Map(apps.map(a => [appKey(a), a]));
+      assignRandomRanks(apps);
+      syncUpdatesButton();
+      renderCategories();
+      renderGrid();
+      if (document.getElementById('diceBackdrop').classList.contains('open') && currentDiceApps.length > 0) {
+        currentDiceApps = currentDiceApps.map(old => appByKey.get(appKey(old)) || old);
+        document.getElementById('diceGrid').innerHTML = currentDiceApps.map(a => renderAppCardHtml(a)).join('');
       }
-    };
-    $("dropZone").ondragover = (e) => e.preventDefault();
-    $("dropZone").ondrop = (e) => {
+      if (document.getElementById('updatesBackdrop').classList.contains('open')) {
+        renderUpdatesPopupContent();
+      }
+    }
+
+    function matchesSearch(app, rawQuery) {
+      if (!rawQuery) return true;
+      const tokens = rawQuery.split(/\s+/).filter(Boolean);
+      const linkText = (app.links || []).map(l => `${l.type || ''} ${l.url || ''}`).join(' ');
+      const hay = `${app.name || ''} ${stripHtml(app.description)} ${(app.categories || []).join(' ')} ${mapCrate(app)} ${linkText}`.toLowerCase();
+      return tokens.every(tok => {
+        const expanded = SEARCH_SYNONYMS[tok] || [tok];
+        return expanded.some(term => hay.includes(term));
+      });
+    }
+
+    function getFilteredApps() {
+      const term = document.getElementById('q').value.trim().toLowerCase();
+      const filtered = apps.filter(a => {
+        if (onlyInstalled && !a.installed) return false;
+        if (selectedCrate && mapCrate(a) !== selectedCrate) return false;
+        return matchesSearch(a, term);
+      });
+
+      if (sortMode === 'random') {
+        return [...filtered].sort((a, b) => (randomRank.get(appKey(a)) ?? 0) - (randomRank.get(appKey(b)) ?? 0));
+      }
+      return [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    }
+
+    function syncControls() {
+      const sortBtn = document.getElementById('sortBtn');
+      const reshuffleBtn = document.getElementById('reshuffleBtn');
+
+      if (sortMode === 'random') {
+        sortBtn.textContent = 'Sorted: Random';
+        sortBtn.classList.add('random-mode');
+        reshuffleBtn.classList.add('visible');
+      } else {
+        sortBtn.textContent = 'Sorted: A–Z';
+        sortBtn.classList.remove('random-mode');
+        reshuffleBtn.classList.remove('visible');
+      }
+    }
+
+    function goPage(p, totalPages) {
+      const maxP = totalPages || totalPagesCache || 1;
+      currentPage = Math.max(1, Math.min(maxP, p));
+      renderGrid();
+    }
+
+    function openByKey(key) {
+      const app = appByKey.get(key);
+      if (app) openDrawer(app);
+    }
+
+    function renderAppCardHtml(a) {
+      const dlUrl = findDownloadLink(a);
+      const siteUrl = findWebsiteLink(a);
+      const ghUrl = findGitHubURL(a);
+      const ghSlug = extractGitHubSlug(a);
+      const key = appKey(a);
+      const safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeName = (a.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+      const crate = mapCrate(a);
+      const safeCrate = crate.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const cleanDesc = stripHtml(a.description) || 'No description provided.';
+      const repoHtml = ghSlug
+        ? `<a class="repo-pill" href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="View source repository on GitHub">${ghSlug}</a>`
+        : '';
+
+      let status = '';
+      if (a.update_available) {
+        status = `<span class="upd-badge">Update ${a.latest_tag}</span>`;
+      } else if (a.installed) {
+        status = `<span class="installed">Installed${a.installed_tag ? ' · ' + a.installed_tag : ''}</span>`;
+      }
+
+      let btns = '';
+      if (a.installed) {
+        if (a.update_available && dlUrl) {
+          btns += `<button type="button" class="update" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Update</button>`;
+        }
+        btns += `<button type="button" class="remove" onclick="event.stopPropagation(); removeApp('${safeName}', this)">Remove</button>`;
+      } else if (dlUrl) {
+        btns = `<button type="button" class="primary" onclick="event.stopPropagation(); installApp('${safeName}', '${safeUrl}', this)">Install</button>`;
+      } else if (siteUrl) {
+        btns = `<a class="site-link" href="${siteUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Project Site ↗</a>`;
+      } else {
+        btns = `<span style="color:var(--muted);font-size:0.72rem;">Website only</span>`;
+      }
+
+      return `
+        <div class="card" onclick="openByKey('${safeKey}')">
+          <div>
+            <div class="card-top">
+              <div class="name" title="${(a.name || '').replace(/"/g, '&quot;')}">${a.name}</div>
+              <span class="cat-badge" onclick="event.stopPropagation(); selectCrateFromCard('${safeCrate}')">${crate}</span>
+            </div>
+            <div class="desc">${cleanDesc}</div>
+            ${repoHtml}
+          </div>
+          <div class="foot">
+            <div>${status}</div>
+            <div class="actions">${btns}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGrid() {
+      syncControls();
+      computePageSize();
+      const matches = getFilteredApps();
+      const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
+      totalPagesCache = totalPages;
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const start = (currentPage - 1) * pageSize;
+      const pageItems = matches.slice(start, start + pageSize);
+
+      const catLabel = selectedCrate ? ` · ${selectedCrate}` : '';
+      document.getElementById('count').textContent = `${matches.length} apps${catLabel}`;
+
+      document.getElementById('topPager').innerHTML = `
+        <button type="button" onclick="goPage(1, ${totalPages})" ${currentPage <= 1 ? 'disabled' : ''}>First</button>
+        <button type="button" onclick="goPage(${currentPage - 1}, ${totalPages})" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+        <span class="page-info">Page ${currentPage} / ${totalPages}</span>
+        <button type="button" class="next-btn" onclick="goPage(${currentPage + 1}, ${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>Next Page</button>
+        <button type="button" onclick="goPage(${totalPages}, ${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>Last</button>
+      `;
+
+      const grid = document.getElementById('grid');
+      if (pageItems.length === 0) {
+        grid.innerHTML = `<div style="color:var(--muted);padding:1.5rem 0;">No matching apps found.</div>`;
+        return;
+      }
+
+      grid.innerHTML = pageItems.map(a => renderAppCardHtml(a)).join('');
+    }
+
+    function selectCrateFromCard(crate) {
+      closeDicePopup();
+      closeUpdatesPopup();
+      selectedCrate = selectedCrate === crate ? '' : crate;
+      currentPage = 1;
+      renderCategories();
+      renderGrid();
+    }
+
+    function openDrawer(app) {
+      const token = ++drawerToken;
+      const dlUrl = findDownloadLink(app);
+      const siteUrl = findWebsiteLink(app);
+      const ghUrl = findGitHubURL(app);
+      const ghSlug = extractGitHubSlug(app);
+      const safeName = (app.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const safeUrl = dlUrl ? dlUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
+      const cleanDesc = stripHtml(app.description) || 'No description provided.';
+
+      document.getElementById('dName').textContent = app.name;
+      const catBase = `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}`;
+      document.getElementById('dCat').innerHTML = ghSlug
+        ? `${catBase} · <a href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="color:var(--amber);text-decoration:underline;">${ghSlug}</a>`
+        : catBase;
+      document.getElementById('dDesc').textContent = cleanDesc;
+
+      const notesBox = document.getElementById('dNotes');
+      const notesTitle = document.getElementById('dNotesTitle');
+      const notesBody = document.getElementById('dNotesBody');
+      notesBox.style.display = 'none';
+      notesBody.textContent = '';
+
+      const st = document.getElementById('dStatus');
+      if (app.update_available) {
+        st.style.color = 'var(--amber)';
+        st.textContent = `Update available: ${app.latest_tag}`;
+      } else if (app.installed) {
+        st.style.color = 'var(--lime)';
+        const extra = [app.installed_tag, app.kind].filter(Boolean).join(' · ');
+        st.textContent = `Installed${extra ? ' (' + extra + ')' : ''}`;
+      } else {
+        st.style.color = 'var(--muted)';
+        st.textContent = dlUrl ? 'Ready to install' : (siteUrl ? 'Website only' : 'No download link listed');
+      }
+
+      const act = document.getElementById('dActions');
+      let html = `<button type="button" onclick="closeDrawer()">Close</button>`;
+      if (app.installed) {
+        if (app.update_available && dlUrl) {
+          html += `<button type="button" class="update" onclick="installApp('${safeName}', '${safeUrl}', this)">Update</button>`;
+        }
+        html += `<button type="button" class="remove" onclick="removeApp('${safeName}', this)">Remove</button>`;
+      } else if (dlUrl) {
+        html += `<button type="button" class="primary" onclick="installApp('${safeName}', '${safeUrl}', this)">Install</button>`;
+      } else if (siteUrl) {
+        html += `<a class="site-link" href="${siteUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="padding:0.4rem 0.5rem;">Project Site ↗</a>`;
+      }
+      act.innerHTML = html;
+
+      document.getElementById('drawerBackdrop').classList.add('open');
+
+      if (ghUrl) {
+        fetch('/api/app-details?github=' + encodeURIComponent(ghUrl))
+          .then(r => (r.ok ? r.json() : null))
+          .then(info => {
+            if (!info || token !== drawerToken) return;
+            const ghDesc = stripHtml(info.description);
+            const currentDesc = document.getElementById('dDesc').textContent.trim();
+            if (ghDesc && (!currentDesc || ghDesc.length > currentDesc.length)) {
+              document.getElementById('dDesc').textContent = ghDesc;
+            }
+            if (Array.isArray(info.topics) && info.topics.length > 0) {
+              const repoSuffix = ghSlug
+                ? ` · <a href="${ghUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" style="color:var(--amber);text-decoration:underline;">${ghSlug}</a>`
+                : '';
+              document.getElementById('dCat').innerHTML =
+                `${mapCrate(app)} · ${(app.categories || []).join(', ') || 'Utility'}${repoSuffix} · #${info.topics.slice(0, 4).join(' #')}`;
+            }
+            const cleanNotes = stripHtml(info.release_notes);
+            if (cleanNotes) {
+              notesTitle.textContent = info.release_tag ? `Release Notes (${info.release_tag})` : 'Latest Release Notes';
+              notesBody.textContent = cleanNotes;
+              notesBox.style.display = 'block';
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    function closeDrawer() {
+      drawerToken++;
+      document.getElementById('drawerBackdrop').classList.remove('open');
+    }
+
+    async function inspectGitHubRepo() {
+      const raw = document.getElementById('ghRepoInput').value.trim();
+      if (!raw) {
+        endWork('Enter an owner/repo or GitHub URL first.', true, null);
+        return;
+      }
+      const btn = document.getElementById('ghInspectBtn');
+      beginWork(`Resolving latest Linux release for ${raw}...`, btn, 'Inspecting...');
+      try {
+        const res = await fetch('/api/github-resolve?repo=' + encodeURIComponent(raw));
+        if (!res.ok) throw new Error(await res.text());
+        const resolved = await res.json();
+        endWork(`Matched ${resolved.asset_name} (${resolved.tag})`, false, btn);
+
+        openDrawer({
+          name: resolved.name,
+          slug: resolved.name.toLowerCase(),
+          description: `${resolved.description || 'GitHub Release package'}\n\nMatched Asset: ${resolved.asset_name} (${resolved.kind}${resolved.size ? ' · ' + formatBytes(resolved.size) : ''})\nRelease Tag: ${resolved.tag}`,
+          categories: ['GitHub Release'],
+          links: [{ type: 'GitHub', url: 'https://github.com/' + resolved.repo }],
+          installed: false
+        });
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
+    }
+
+    async function installGitHubRepo() {
+      const raw = document.getElementById('ghRepoInput').value.trim();
+      if (!raw) {
+        endWork('Enter an owner/repo or GitHub URL first.', true, null);
+        return;
+      }
+      const btn = document.getElementById('ghInstallBtn');
+      beginWork(`Resolving & installing ${raw}... (confirm password prompt if shown)`, btn, 'Installing...');
+      try {
+        const res = await fetch('/api/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: '', url: raw })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        document.getElementById('ghRepoInput').value = '';
+        await init();
+        endWork(`Installed ${raw}. Ready in your app menu.`, false, btn);
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
+    }
+
+    async function installApp(name, url, btn) {
+      const isUpdate = btn && (btn.classList.contains('update') || /update/i.test(btn.textContent || ''));
+      const verb = isUpdate ? 'Updating' : 'Installing';
+      beginWork(
+        `${verb} ${name}... (confirm password prompt if shown)`,
+        btn,
+        isUpdate ? 'Updating...' : 'Installing...'
+      );
+      try {
+        const res = await fetch('/api/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, url })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeDrawer();
+        closeDicePopup();
+        await init();
+        endWork(
+          isUpdate ? `Updated ${name}.` : `Installed ${name}. Ready in your app menu.`,
+          false,
+          btn
+        );
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
+    }
+
+    async function removeApp(name, btn) {
+      beginWork(`Removing ${name}...`, btn, 'Removing...');
+      try {
+        const res = await fetch('/api/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeDrawer();
+        await init();
+        endWork(`Removed ${name}.`, false, btn);
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
+    }
+
+    function getSelectedLocalFile() {
+      return droppedFile || document.getElementById('fileInput').files[0] || null;
+    }
+
+    function setSelectedLocalFile(file) {
+      droppedFile = file || null;
+      const el = document.getElementById('fileLabel');
+      if (file) {
+        el.textContent = file.name;
+        el.title = file.name;
+      } else {
+        el.innerHTML = `<span>drop .AppImage</span>${TARGET_SVG}`;
+        el.title = 'Drop a local .AppImage or archive here to install';
+      }
+    }
+
+    async function uploadLocal(file) {
+      if (!file) {
+        endWork('Pick or drop a package file first.', true, null);
+        return;
+      }
+      const btn = document.getElementById('uploadBtn');
+      beginWork(
+        `Installing "${file.name}"... (confirm password prompt if shown)`,
+        btn,
+        'Installing...'
+      );
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('name', document.getElementById('localName').value.trim());
+        const res = await fetch('/api/upload-local', { method: 'POST', body: form });
+        if (!res.ok) throw new Error(await res.text());
+        document.getElementById('fileInput').value = '';
+        document.getElementById('localName').value = '';
+        setSelectedLocalFile(null);
+        await init();
+        endWork(`Installed "${file.name}". Ready in your app menu.`, false, btn);
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
+    }
+
+    document.getElementById('ghInspectBtn').addEventListener('click', inspectGitHubRepo);
+    document.getElementById('ghInstallBtn').addEventListener('click', installGitHubRepo);
+    document.getElementById('ghRepoInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inspectGitHubRepo();
+      }
+    });
+
+    document.getElementById('sortBtn').addEventListener('click', () => {
+      if (sortMode === 'random') {
+        sortMode = 'az';
+      } else {
+        sortMode = 'random';
+        assignRandomRanks(apps);
+      }
+      currentPage = 1;
+      renderGrid();
+    });
+
+    document.getElementById('reshuffleBtn').addEventListener('click', () => {
+      assignRandomRanks(apps);
+      currentPage = 1;
+      renderGrid();
+    });
+
+    document.getElementById('q').addEventListener('input', () => {
+      currentPage = 1;
+      renderGrid();
+    });
+
+    document.getElementById('updatesPillBtn').addEventListener('click', openUpdatesPopup);
+    document.getElementById('updateAllBtn').addEventListener('click', updateAllApps);
+    document.getElementById('closeUpdatesBtn').addEventListener('click', closeUpdatesPopup);
+    document.getElementById('updatesBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'updatesBackdrop') closeUpdatesPopup();
+    });
+
+    document.getElementById('openDiceBtn').addEventListener('click', openDicePopup);
+    document.getElementById('rerollBtn').addEventListener('click', rollDice);
+    document.getElementById('closeDiceBtn').addEventListener('click', closeDicePopup);
+    document.getElementById('diceBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'diceBackdrop') closeDicePopup();
+    });
+
+    document.getElementById('openFaqBtn').addEventListener('click', () => {
+      document.getElementById('faqBackdrop').classList.add('open');
+    });
+    document.getElementById('closeFaqBtn').addEventListener('click', () => {
+      document.getElementById('faqBackdrop').classList.remove('open');
+    });
+    document.getElementById('faqBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'faqBackdrop') document.getElementById('faqBackdrop').classList.remove('open');
+    });
+
+    window.addEventListener('resize', renderGrid);
+
+    document.addEventListener('keydown', e => {
+      const drawer = document.getElementById('drawerBackdrop');
+      const faq = document.getElementById('faqBackdrop');
+      const dice = document.getElementById('diceBackdrop');
+      const updates = document.getElementById('updatesBackdrop');
+
+      if (e.key === 'Escape') {
+        if (drawer.classList.contains('open')) { closeDrawer(); return; }
+        if (faq.classList.contains('open')) { faq.classList.remove('open'); return; }
+        if (dice.classList.contains('open')) { closeDicePopup(); return; }
+        if (updates.classList.contains('open')) { closeUpdatesPopup(); return; }
+        return;
+      }
+
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (drawer.classList.contains('open') || faq.classList.contains('open') || dice.classList.contains('open') || updates.classList.contains('open')) return;
+
+      if (e.key === 'ArrowRight' && currentPage < totalPagesCache) {
+        goPage(currentPage + 1, totalPagesCache);
+      } else if (e.key === 'ArrowLeft' && currentPage > 1) {
+        goPage(currentPage - 1, totalPagesCache);
+      }
+    });
+
+    document.getElementById('resetBrand').addEventListener('click', () => {
+      selectedCrate = '';
+      onlyInstalled = false;
+      currentPage = 1;
+      document.getElementById('q').value = '';
+      document.getElementById('installedBtn').classList.remove('active');
+      renderCategories();
+      renderGrid();
+    });
+
+    document.getElementById('installedBtn').addEventListener('click', e => {
+      onlyInstalled = !onlyInstalled;
+      currentPage = 1;
+      e.target.classList.toggle('active', onlyInstalled);
+      renderGrid();
+    });
+
+    document.getElementById('pickFileBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+    document.getElementById('fileInput').addEventListener('change', e => setSelectedLocalFile(e.target.files[0] || null));
+    document.getElementById('uploadBtn').addEventListener('click', () => uploadLocal(getSelectedLocalFile()));
+
+    const dz = document.getElementById('localDrop');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
       e.preventDefault();
-      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) {
-        state.selectedFile = f;
-        $("dropHint").textContent = f.name;
+      dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) setSelectedLocalFile(e.dataTransfer.files[0]);
+    });
+
+    document.getElementById('drawerBackdrop').addEventListener('click', e => {
+      if (e.target.id === 'drawerBackdrop') closeDrawer();
+    });
+
+    init();
+    setInterval(() => {
+      if (!document.hidden) {
+        init();
       }
-    };
-    $("localInstallBtn").onclick = async () => {
-      if (!state.selectedFile) return;
-      const fd = new FormData();
-      fd.append("file", state.selectedFile);
-      fd.append("name", $("localNameInput").value.trim());
-      setStatus(`Installing ${state.selectedFile.name}...`);
-      const res = await fetch("/api/install/local", { method: "POST", body: fd });
-      const data = await res.json();
-      setStatus(data.error ? `Error: ${data.error}` : `Installed ${state.selectedFile.name} via Ahhhh.`);
-      await loadInstalled();
-    };
-
-    $("helpBtn").onclick = () => {
-      setStatus("Ahhhh (CLI: ahhhh) installs AppImages, archives, and binaries into /opt/appimages with /usr/local/bin symlinks and desktop entries.");
-    };
-
-    (async () => {
-      await loadInstalled();
-      await loadFeed();
-    })();
+    }, 60 * 1000);
   </script>
 </body>
 </html>
