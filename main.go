@@ -44,23 +44,35 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
-func handleFeed(w http.ResponseWriter, r *http.Request) {
-	client := &http.Client{Timeout: 20 * time.Second}
-	req, err := http.NewRequest("GET", "https://appimage.github.io/feed.json", nil)
+func serveFallbackFeed(w http.ResponseWriter, liveErr string) {
+	raw, err := webFS.ReadFile("web/fallback-feed.json")
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error(), "items": []any{}})
+		writeJSON(w, http.StatusOK, map[string]any{"error": liveErr, "items": []any{}})
 		return
 	}
-	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.2")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Ahhhh-Feed-Source", "bundled-fallback")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(raw)
+}
+
+func handleFeed(w http.ResponseWriter, r *http.Request) {
+	client := &http.Client{Timeout: 8 * time.Second}
+	req, err := http.NewRequest("GET", "https://appimage.github.io/feed.json", nil)
+	if err != nil {
+		serveFallbackFeed(w, err.Error())
+		return
+	}
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.4")
 	resp, err := client.Do(req)
 	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"error": err.Error(), "items": []any{}})
+		serveFallbackFeed(w, err.Error())
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		writeJSON(w, http.StatusOK, map[string]any{"error": fmt.Sprintf("feed HTTP %d", resp.StatusCode), "items": []any{}})
+		serveFallbackFeed(w, fmt.Sprintf("feed HTTP %d", resp.StatusCode))
 		return
 	}
 
