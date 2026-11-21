@@ -40,7 +40,7 @@
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 0.7rem;
+      gap: 0.65rem;
       padding-bottom: 0.7rem;
       margin-bottom: 0.7rem;
       border-bottom: 1.5px solid var(--border);
@@ -51,6 +51,13 @@
       flex-wrap: wrap;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .header-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.55rem;
     }
 
     .header-center {
@@ -136,12 +143,12 @@
 
     input[type="search"],
     input[type="text"] {
-      padding: 0.4rem 0.7rem;
+      padding: 0.4rem 0.68rem;
       border-radius: 7px;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 0.84rem;
+      font-size: 0.82rem;
     }
 
     input[type="search"]:focus,
@@ -150,8 +157,9 @@
       border-color: var(--cyan);
     }
 
-    input[type="search"] { width: 210px; }
-    input[type="text"].local-name { width: 112px; }
+    input[type="search"] { width: 200px; }
+    input[type="text"].local-name { width: 105px; }
+    input[type="text"].gh-repo-input { width: 185px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
 
     button {
       padding: 0.4rem 0.72rem;
@@ -180,6 +188,17 @@
       background: #ff4796;
       border-color: #ff4796;
       color: #fff;
+    }
+
+    button.cyan-btn {
+      background: rgba(34, 211, 238, 0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    button.cyan-btn:hover:not(:disabled) {
+      background: var(--cyan);
+      color: #0b0b10;
     }
 
     button.dice-btn {
@@ -369,11 +388,23 @@
       display: inline-flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.42rem;
+      gap: 0.4rem;
       padding: 0.32rem 0.55rem;
       border-radius: 8px;
       border: 1px dashed #3b4259;
       background: rgba(20, 23, 32, 0.9);
+      max-width: 100%;
+    }
+
+    .gh-box {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      background: rgba(20, 23, 32, 0.95);
       max-width: 100%;
     }
 
@@ -392,6 +423,15 @@
       padding: 0 0.15rem;
     }
 
+    .gh-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: var(--cyan);
+      text-transform: uppercase;
+      padding: 0 0.15rem;
+    }
+
     .drop-hint {
       display: inline-flex;
       align-items: center;
@@ -399,7 +439,7 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.72rem;
       color: var(--cyan);
-      max-width: 155px;
+      max-width: 135px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -981,23 +1021,32 @@
       </button>
     </div>
 
-    <div class="local-drop" id="localDrop" title="Pick a local .AppImage or drop it onto the target">
-      <span class="local-tag">Local .AppImage</span>
-      <input type="file" id="fileInput" accept=".AppImage,.appimage" hidden />
-      <button type="button" id="pickFileBtn">Pick File</button>
-      <span class="drop-hint" id="fileLabel">
-        <span>or drop here</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-          <circle cx="12" cy="12" r="3" />
-          <line x1="12" y1="2" x2="12" y2="6" />
-          <line x1="12" y1="18" x2="12" y2="22" />
-          <line x1="2" y1="12" x2="6" y2="12" />
-          <line x1="18" y1="12" x2="22" y2="12" />
-        </svg>
-      </span>
-      <input type="text" class="local-name" id="localName" placeholder="Optional name" />
-      <button type="button" class="primary" id="uploadBtn">Install</button>
+    <div class="header-right">
+      <div class="gh-box" title="Install any Linux AppImage, tarball, or binary directly from GitHub Releases">
+        <span class="gh-tag">GitHub Release</span>
+        <input type="text" class="gh-repo-input" id="ghRepoInput" placeholder="owner/repo or URL" />
+        <button type="button" class="cyan-btn" id="ghInspectBtn">Inspect</button>
+        <button type="button" class="primary" id="ghInstallBtn">Install</button>
+      </div>
+
+      <div class="local-drop" id="localDrop" title="Install a local .AppImage, .tar.gz, .tar.xz, or .zip onto your system">
+        <span class="local-tag">Local .AppImage</span>
+        <input type="file" id="fileInput" accept=".AppImage,.appimage,.tar.gz,.tgz,.tar.xz,.zip" hidden />
+        <button type="button" id="pickFileBtn">Pick</button>
+        <span class="drop-hint" id="fileLabel">
+          <span>drop .AppImage</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="3" />
+            <line x1="12" y1="2" x2="12" y2="6" />
+            <line x1="12" y1="18" x2="12" y2="22" />
+            <line x1="2" y1="12" x2="6" y2="12" />
+            <line x1="18" y1="12" x2="22" y2="12" />
+          </svg>
+        </span>
+        <input type="text" class="local-name" id="localName" placeholder="Optional name" />
+        <button type="button" class="primary" id="uploadBtn">Install</button>
+      </div>
     </div>
   </header>
 
@@ -1018,7 +1067,7 @@
   <div class="status-toast" id="statusToast"></div>
 
   <footer>
-    <span>APPAPPAPP // ahhhh · Simple Linux AppImage Installer</span>
+    <span>APPAPPAPP // ahhhh · Universal Linux AppImage &amp; GitHub Release Installer</span>
     <div>
       <button type="button" id="openFaqBtn">How It Works &amp; Uninstall</button>
     </div>
@@ -1079,30 +1128,23 @@
       </div>
 
       <div class="faq-item">
-        <div class="faq-q">1. Installing an AppImage (Catalog or Local)</div>
+        <div class="faq-q">1. Installing from Catalog, GitHub Releases, or Local Files</div>
         <div class="faq-a">
-          Click <strong>Install</strong> on a catalog app—or pick/drop a local <code>.AppImage</code>—and confirm the password prompt. <code>ahhhh</code> places the binary under <code>/opt/appimages/</code>, sets executable permissions, adds a command in <code>/usr/local/bin/</code>, and registers a desktop launcher.
+          Click <strong>Install</strong> on any catalog entry, paste any <code>owner/repo</code> into the <strong>GitHub Release</strong> bar, or drop a local <code>.AppImage</code> / <code>.tar.gz</code> / <code>.tar.xz</code> / <code>.zip</code> file. <code>ahhhh</code> automatically picks the matching Linux architecture asset, unpacks it under <code>/opt/appimages/</code>, links the binary in <code>/usr/local/bin/</code>, and registers a desktop launcher.
         </div>
       </div>
 
       <div class="faq-item">
-        <div class="faq-q">2. Common Linux AppImage Snags</div>
+        <div class="faq-q">2. Common Linux AppImage Snags &amp; GitHub Rate Limits</div>
         <div class="faq-a">
-          If an AppImage refuses to launch on newer distros, check FUSE support (<code>fuse3</code> or <code>libfuse2</code>) or run it once in a terminal to see its output. If a catalog item is website-only, download its <code>.AppImage</code> manually and install it locally.
+          If an AppImage refuses to launch on newer distros, check FUSE support (<code>fuse3</code> or <code>libfuse2</code>). If you check many GitHub repos frequently, set <code>GITHUB_TOKEN</code> in your environment to avoid unauthenticated API rate limits.
         </div>
       </div>
 
       <div class="faq-item">
-        <div class="faq-q">3. Removing Installed AppImages</div>
+        <div class="faq-q">3. Removing Installed Apps</div>
         <div class="faq-a">
-          Click <strong>Remove</strong> on any installed app (or run <code>ahhhh remove &lt;name&gt;</code> in a terminal) to remove its AppImage, shortcut, icon, and menu entry cleanly.
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q">4. Removing ahhhh Itself</div>
-        <div class="faq-a">
-          If installed via <code>.deb</code>: <code>sudo apt remove ahhhh</code>. If installed via <code>install.sh</code>: remove <code>/usr/local/bin/ahhhh</code> and <code>~/.local/share/applications/ahhhh.desktop</code>.
+          Click <strong>Remove</strong> on any installed app (or run <code>ahhhh remove &lt;name&gt;</code> in a terminal) to cleanly delete its files under <code>/opt/appimages/</code>, command symlink, icon, and menu entry.
         </div>
       </div>
     </div>
@@ -1149,6 +1191,7 @@
     };
 
     const CRATE_ORDER = [
+      'GitHub Releases',
       'Web & Browsers',
       'Audio & Video',
       'Dev & Code',
@@ -1175,6 +1218,9 @@
 
     function mapCrate(app) {
       const raw = (app.categories || []).map(c => c.toLowerCase());
+      if (raw.includes('github release')) {
+        return 'GitHub Releases';
+      }
       const blob = `${app.name || ''} ${stripHtml(app.description)}`.toLowerCase();
 
       if (raw.includes('webbrowser') || /\b(browser|firefox|chromium|vivaldi|librewolf|floorp|zen browser)\b/.test(blob)) {
@@ -1253,6 +1299,12 @@
 
     function isInstallable(app) {
       return Boolean(app.installed || findDownloadLink(app));
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '';
+      const mb = bytes / (1024 * 1024);
+      return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
     }
 
     let apps = [];
@@ -1352,7 +1404,7 @@
 
       bannerTimer = setTimeout(() => {
         banner.classList.remove('show');
-      }, isError ? 5000 : 2800);
+      }, isError ? 5000 : 3000);
     }
 
     function friendlyError(raw) {
@@ -1363,6 +1415,9 @@
       }
       if (lower.includes('permission') || lower.includes('polkit') || lower.includes('cancelled')) {
         return `${txt} — Tip: System-wide install/remove requires admin confirmation via pkexec.`;
+      }
+      if (lower.includes('rate limit') || lower.includes('403')) {
+        return `${txt} — Tip: Set GITHUB_TOKEN in your environment to raise GitHub API limits.`;
       }
       return txt;
     }
@@ -1772,7 +1827,8 @@
         st.textContent = `Update available: ${app.latest_tag}`;
       } else if (app.installed) {
         st.style.color = 'var(--lime)';
-        st.textContent = `Installed${app.installed_tag ? ' (' + app.installed_tag + ')' : ''}`;
+        const extra = [app.installed_tag, app.kind].filter(Boolean).join(' · ');
+        st.textContent = `Installed${extra ? ' (' + extra + ')' : ''}`;
       } else {
         st.style.color = 'var(--muted)';
         st.textContent = dlUrl ? 'Ready to install' : (siteUrl ? 'Website only' : 'No download link listed');
@@ -1825,6 +1881,56 @@
     function closeDrawer() {
       drawerToken++;
       document.getElementById('drawerBackdrop').classList.remove('open');
+    }
+
+    async function inspectGitHubRepo() {
+      const raw = document.getElementById('ghRepoInput').value.trim();
+      if (!raw) {
+        endWork('Enter an owner/repo or GitHub URL first.', true, null);
+        return;
+      }
+      const btn = document.getElementById('ghInspectBtn');
+      beginWork(`Resolving latest Linux release for ${raw}...`, btn, 'Inspecting...');
+      try {
+        const res = await fetch('/api/github-resolve?repo=' + encodeURIComponent(raw));
+        if (!res.ok) throw new Error(await res.text());
+        const resolved = await res.json();
+        endWork(`Matched ${resolved.asset_name} (${resolved.tag})`, false, btn);
+
+        openDrawer({
+          name: resolved.name,
+          slug: resolved.name.toLowerCase(),
+          description: `${resolved.description || 'GitHub Release package'}\n\nMatched Asset: ${resolved.asset_name} (${resolved.kind}${resolved.size ? ' · ' + formatBytes(resolved.size) : ''})\nRelease Tag: ${resolved.tag}`,
+          categories: ['GitHub Release'],
+          links: [{ type: 'GitHub', url: 'https://github.com/' + resolved.repo }],
+          installed: false
+        });
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
+    }
+
+    async function installGitHubRepo() {
+      const raw = document.getElementById('ghRepoInput').value.trim();
+      if (!raw) {
+        endWork('Enter an owner/repo or GitHub URL first.', true, null);
+        return;
+      }
+      const btn = document.getElementById('ghInstallBtn');
+      beginWork(`Resolving & installing ${raw}... (confirm password prompt if shown)`, btn, 'Installing...');
+      try {
+        const res = await fetch('/api/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: '', url: raw })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        document.getElementById('ghRepoInput').value = '';
+        await init();
+        endWork(`Installed ${raw}. Ready in your app menu.`, false, btn);
+      } catch (e) {
+        endWork(friendlyError(e.message), true, btn);
+      }
     }
 
     async function installApp(name, url, btn) {
@@ -1883,14 +1989,14 @@
         el.textContent = file.name;
         el.title = file.name;
       } else {
-        el.innerHTML = `<span>or drop here</span>${TARGET_SVG}`;
-        el.title = 'Drop .AppImage here';
+        el.innerHTML = `<span>drop .AppImage</span>${TARGET_SVG}`;
+        el.title = 'Drop a local .AppImage or archive here to install';
       }
     }
 
     async function uploadLocal(file) {
       if (!file) {
-        endWork('Pick or drop an .AppImage file first.', true, null);
+        endWork('Pick or drop a package file first.', true, null);
         return;
       }
       const btn = document.getElementById('uploadBtn');
@@ -1914,6 +2020,15 @@
         endWork(friendlyError(e.message), true, btn);
       }
     }
+
+    document.getElementById('ghInspectBtn').addEventListener('click', inspectGitHubRepo);
+    document.getElementById('ghInstallBtn').addEventListener('click', installGitHubRepo);
+    document.getElementById('ghRepoInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inspectGitHubRepo();
+      }
+    });
 
     document.getElementById('sortBtn').addEventListener('click', () => {
       if (sortMode === 'random') {

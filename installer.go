@@ -1,9 +1,11 @@
 package main
 
 import (
-	"context"
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,664 +15,956 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	optDir      = "/opt/appimages"
-	binDir      = "/usr/local/bin"
-	desktopDir  = "/usr/local/share/applications"
-	iconBaseDir = "/usr/local/share/icons/hicolor"
-	selfRepo    = "pink-blancmange/ahhhh"
+	appDir     = "/opt/appimages"
+	binDir     = "/usr/local/bin"
+	desktopDir = "/usr/share/applications"
+	iconDir    = "/usr/share/icons/hicolor/256x256/apps"
 )
 
-type InstallMeta struct {
+type AppMeta struct {
 	Name        string `json:"name"`
 	Slug        string `json:"slug"`
-	Source      string `json:"source"`
 	GitHubRepo  string `json:"github_repo,omitempty"`
-	ReleaseTag  string `json:"release_tag,omitempty"`
-	Description string `json:"description,omitempty"`
-	Homepage    string `json:"homepage,omitempty"`
 	InstalledAt string `json:"installed_at"`
+	Tag         string `json:"tag,omitempty"`
+	AssetName   string `json:"asset_name,omitempty"`
+	Kind        string `json:"kind,omitempty"` // "appimage", "archive", "binary"
+	ExecPath    string `json:"exec_path,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
-type appStreamXML struct {
-	Summary     string `xml:"summary"`
-	Description struct {
-		Paragraphs []string `xml:"p"`
-		Items      []string `xml:"ul>li"`
-	} `xml:"description"`
-	URLs []struct {
-		Type string `xml:"type,attr"`
-		Href string `xml:",chardata"`
-	} `xml:"url"`
+type GitHubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Size               int64  `json:"size"`
 }
 
-var (
-	semverTagRe     = regexp.MustCompile(`v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`)
-	cleanSemverCore = regexp.MustCompile(`^v?(\d+\.\d+\.\d+)`)
-	trailingNoiseRe = regexp.MustCompile(`(?i)[-_ ]+v?\d+\.\d+(?:\.\d+)?(?:[-_ ]*(?:x86_64|amd64|aarch64|arm64|linux|appimage)).*$`)
-)
+type GitHubRelease struct {
+	TagName string        `json:"tag_name"`
+	Name    string        `json:"name"`
+	Body    string        `json:"body"`
+	Assets  []GitHubAsset `json:"assets"`
+}
+
+type GitHubRepoInfo struct {
+	FullName    string   `json:"full_name"`
+	Description string   `json:"description"`
+	Homepage    string   `json:"homepage"`
+	Topics      []string `json:"topics"`
+	Stars       int      `json:"stargazers_count"`
+}
+
+type ResolvedGitHubTarget struct {
+	Repo        string `json:"repo"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Tag         string `json:"tag"`
+	AssetName   string `json:"asset_name"`
+	DownloadURL string `json:"download_url"`
+	Kind        string `json:"kind"`
+	Size        int64  `json:"size"`
+}
+
+func newGitHubRequest(url string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.0")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	if tok := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	} else if tok := strings.TrimSpace(os.Getenv("GH_TOKEN")); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	}
+	return req, nil
+}
 
 func slugify(name string) string {
-	re := regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
-	return strings.ToLower(strings.Trim(re.ReplaceAllString(name, "-"), "-"))
+	s := strings.ToLower(strings.TrimSpace(name))
+	re := regexp.MustCompile(`[^a-z0-9]+`)
+	s = re.ReplaceAllString(s, "-")
+	s = strings.Trim(s, "-")
+	if s == "" {
+		return "app"
+	}
+	return s
 }
 
-func normalizeTag(tag string) string {
-	t := strings.TrimSpace(tag)
-	if strings.EqualFold(t, "local") || t == "" {
+func parseGitHubRepo(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
 		return ""
 	}
-	return strings.TrimPrefix(t, "v")
+	s = strings.TrimPrefix(s, "https://github.com/")
+	s = strings.TrimPrefix(s, "http://github.com/")
+	s = strings.TrimPrefix(s, "https://www.github.com/")
+	s = strings.TrimPrefix(s, "http://www.github.com/")
+	s = strings.TrimSuffix(s, ".git")
+	s = strings.Trim(s, "/")
+	parts := strings.Split(s, "/")
+	if len(parts) < 2 {
+		return ""
+	}
+	owner, repo := parts[0], parts[1]
+	valid := regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
+	if !valid.MatchString(owner) || !valid.MatchString(repo) {
+		return ""
+	}
+	return owner + "/" + repo
 }
 
-func formatVersionTag(tag string) string {
-	trimmed := strings.TrimSpace(tag)
-	if trimmed == "" || strings.EqualFold(trimmed, "local") {
-		return "local"
+func classifyAssetKind(name string) string {
+	lower := strings.ToLower(name)
+	switch {
+	case strings.HasSuffix(lower, ".appimage"):
+		return "appimage"
+	case strings.HasSuffix(lower, ".tar.gz"),
+		strings.HasSuffix(lower, ".tgz"),
+		strings.HasSuffix(lower, ".tar.xz"),
+		strings.HasSuffix(lower, ".txz"),
+		strings.HasSuffix(lower, ".zip"):
+		return "archive"
+	default:
+		return "binary"
 	}
-	if m := cleanSemverCore.FindStringSubmatch(trimmed); len(m) == 2 {
-		return "v" + m[1]
-	}
-	if !strings.HasPrefix(trimmed, "v") {
-		return "v" + trimmed
-	}
-	return trimmed
 }
 
-func parseSemverParts(tag string) (major, minor, patch int, ok bool) {
-	norm := normalizeTag(tag)
-	m := cleanSemverCore.FindStringSubmatch(norm)
-	if len(m) != 2 {
-		return 0, 0, 0, false
+func scoreLinuxAsset(name string, hostArch string) int {
+	lower := strings.ToLower(name)
+
+	// Hard exclusions: non-Linux OS, package managers, checksums, signatures, source archives
+	badExts := []string{
+		".deb", ".rpm", ".dmg", ".pkg", ".exe", ".msi", ".apk", ".ipa",
+		".sha256", ".sha512", ".sha1", ".md5", ".asc", ".sig", ".minisig",
+		".sbom", ".json", ".txt", ".yml", ".yaml", ".zsync", ".blockmap",
 	}
-	var maj, min, pat int
-	if _, err := fmt.Sscanf(m[1], "%d.%d.%d", &maj, &min, &pat); err != nil {
-		return 0, 0, 0, false
+	for _, ext := range badExts {
+		if strings.HasSuffix(lower, ext) {
+			return -1000
+		}
 	}
-	return maj, min, pat, true
+	if strings.Contains(lower, "source") || strings.Contains(lower, "src.") {
+		return -1000
+	}
+
+	nonLinuxOS := []string{
+		"windows", "win32", "win64", "-win", "_win", "macos", "darwin", "osx",
+		"apple", "freebsd", "openbsd", "netbsd", "android", "ios",
+	}
+	for _, osTok := range nonLinuxOS {
+		if strings.Contains(lower, osTok) {
+			return -1000
+		}
+	}
+
+	// Architecture filtering
+	isArm64 := strings.Contains(lower, "aarch64") || strings.Contains(lower, "arm64")
+	isArm32 := strings.Contains(lower, "armv7") || strings.Contains(lower, "armv6") || strings.Contains(lower, "armhf")
+	isX86_64 := strings.Contains(lower, "x86_64") || strings.Contains(lower, "amd64") || strings.Contains(lower, "x64")
+	isI386 := strings.Contains(lower, "i386") || strings.Contains(lower, "i686") || strings.Contains(lower, "x86.") || strings.Contains(lower, "386")
+
+	if hostArch == "arm64" {
+		if isX86_64 || isI386 || isArm32 {
+			return -1000
+		}
+	} else {
+		if isArm64 || isArm32 || isI386 {
+			return -1000
+		}
+	}
+
+	score := 0
+	if strings.Contains(lower, "linux") {
+		score += 35
+	}
+	if hostArch == "arm64" && isArm64 {
+		score += 40
+	} else if hostArch != "arm64" && isX86_64 {
+		score += 40
+	}
+
+	kind := classifyAssetKind(name)
+	switch kind {
+	case "appimage":
+		score += 100
+	case "archive":
+		score += 65
+	case "binary":
+		score += 45
+	}
+
+	// Slight preference for glibc over musl unless unspecified
+	if strings.Contains(lower, "musl") {
+		score -= 5
+	}
+	if strings.Contains(lower, "gnu") || strings.Contains(lower, "glibc") {
+		score += 5
+	}
+
+	return score
 }
 
-func compareVersionTags(a, b string) int {
-	na, nb := normalizeTag(a), normalizeTag(b)
-	if na == "" || nb == "" {
+func fetchLatestGitHubRelease(repo string) (*GitHubRelease, error) {
+	client := &http.Client{Timeout: 20 * time.Second}
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
+	req, err := newGitHubRequest(apiURL)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		// Fallback to /releases (e.g., pre-releases only)
+		req2, err2 := newGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=5", repo))
+		if err2 != nil {
+			return nil, err2
+		}
+		resp2, err2 := client.Do(req2)
+		if err2 != nil {
+			return nil, err2
+		}
+		defer resp2.Body.Close()
+		if resp2.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GitHub releases returned HTTP %d for %s", resp2.StatusCode, repo)
+		}
+		var list []GitHubRelease
+		if err := json.NewDecoder(resp2.Body).Decode(&list); err != nil {
+			return nil, err
+		}
+		if len(list) == 0 {
+			return nil, fmt.Errorf("no releases found for %s", repo)
+		}
+		return &list[0], nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned HTTP %d for %s", resp.StatusCode, repo)
+	}
+
+	var rel GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		return nil, err
+	}
+	return &rel, nil
+}
+
+func fetchGitHubRepoInfo(repo string) (*GitHubRepoInfo, error) {
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := newGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s", repo))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	var info GitHubRepoInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+func resolveGitHubTarget(repoInput string, customName string) (*ResolvedGitHubTarget, error) {
+	repo := parseGitHubRepo(repoInput)
+	if repo == "" {
+		return nil, fmt.Errorf("invalid GitHub repository %q (use owner/repo or https://github.com/owner/repo)", repoInput)
+	}
+
+	rel, err := fetchLatestGitHubRelease(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	hostArch := runtime.GOARCH
+	bestScore := -999
+	var bestAsset *GitHubAsset
+	for i := range rel.Assets {
+		a := &rel.Assets[i]
+		sc := scoreLinuxAsset(a.Name, hostArch)
+		if sc > bestScore {
+			bestScore = sc
+			bestAsset = a
+		}
+	}
+
+	if bestAsset == nil || bestScore < 0 {
+		return nil, fmt.Errorf("no compatible Linux release asset found in %s (%s)", repo, rel.TagName)
+	}
+
+	parts := strings.Split(repo, "/")
+	appName := strings.TrimSpace(customName)
+	if appName == "" {
+		appName = parts[1]
+	}
+
+	desc := ""
+	if info, err := fetchGitHubRepoInfo(repo); err == nil && info != nil {
+		desc = strings.TrimSpace(info.Description)
+	}
+
+	return &ResolvedGitHubTarget{
+		Repo:        repo,
+		Name:        appName,
+		Description: desc,
+		Tag:         rel.TagName,
+		AssetName:   bestAsset.Name,
+		DownloadURL: bestAsset.BrowserDownloadURL,
+		Kind:        classifyAssetKind(bestAsset.Name),
+		Size:        bestAsset.Size,
+	}, nil
+}
+
+func parseSemverParts(tag string) ([]int, bool) {
+	clean := strings.TrimSpace(tag)
+	clean = strings.TrimPrefix(clean, "v")
+	clean = strings.TrimPrefix(clean, "V")
+	if idx := strings.IndexAny(clean, "+-"); idx != -1 {
+		clean = clean[:idx]
+	}
+	if clean == "" {
+		return nil, false
+	}
+	rawParts := strings.Split(clean, ".")
+	nums := make([]int, 0, len(rawParts))
+	for _, p := range rawParts {
+		if p == "" {
+			return nil, false
+		}
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, false
+		}
+		nums = append(nums, n)
+	}
+	return nums, len(nums) > 0
+}
+
+// compareVersionTags returns 1 if latest > installed, -1 if latest < installed, 0 if equal.
+func compareVersionTags(installedTag, latestTag string) int {
+	aNorm := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(installedTag), "v"), "V")
+	bNorm := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(latestTag), "v"), "V")
+	if aNorm == bNorm {
 		return 0
 	}
-	majA, minA, patA, okA := parseSemverParts(na)
-	majB, minB, patB, okB := parseSemverParts(nb)
-	if okA && okB {
-		if majA != majB {
-			if majA > majB {
-				return 1
-			}
-			return -1
+
+	aParts, aOk := parseSemverParts(installedTag)
+	bParts, bOk := parseSemverParts(latestTag)
+	if aOk && bOk {
+		maxLen := len(aParts)
+		if len(bParts) > maxLen {
+			maxLen = len(bParts)
 		}
-		if minA != minB {
-			if minA > minB {
+		for i := 0; i < maxLen; i++ {
+			av := 0
+			if i < len(aParts) {
+				av = aParts[i]
+			}
+			bv := 0
+			if i < len(bParts) {
+				bv = bParts[i]
+			}
+			if bv > av {
 				return 1
 			}
-			return -1
-		}
-		if patA != patB {
-			if patA > patB {
-				return 1
+			if bv < av {
+				return -1
 			}
-			return -1
 		}
 		return 0
 	}
-	if na == nb {
-		return 0
-	}
-	if na > nb {
+
+	if bNorm > aNorm {
 		return 1
 	}
 	return -1
 }
 
-func hasNewerTag(current, latest string) bool {
-	return compareVersionTags(latest, current) > 0
-}
-
-func tagsEqual(a, b string) bool {
-	na, nb := normalizeTag(a), normalizeTag(b)
-	if na == "" || nb == "" {
-		return false
-	}
-	return compareVersionTags(a, b) == 0
-}
-
-func detectVersionTag(candidates ...string) string {
-	for _, c := range candidates {
-		if m := semverTagRe.FindString(c); m != "" {
-			return formatVersionTag(m)
-		}
-	}
-	return ""
-}
-
-func cleanFallbackName(raw string) string {
-	s := strings.TrimSpace(raw)
-	s = trailingNoiseRe.ReplaceAllString(s, "")
-	s = strings.Trim(s, "-_ ")
-	if s == "" {
-		return strings.TrimSpace(raw)
-	}
-	return s
-}
-
-func readMeta(slug string) (*InstallMeta, bool) {
-	data, err := os.ReadFile(filepath.Join(optDir, slug, "meta.json"))
-	if err != nil {
-		return nil, false
-	}
-	var m InstallMeta
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, false
-	}
-	return &m, true
-}
-
-func listInstalledSlugs() []string {
-	entries, err := os.ReadDir(optDir)
-	if err != nil {
-		return nil
-	}
-	var out []string
-	for _, e := range entries {
-		if e.IsDir() {
-			binPath := filepath.Join(optDir, e.Name(), e.Name()+".AppImage")
-			if _, err := os.Stat(binPath); err == nil {
-				out = append(out, e.Name())
-			}
-		}
-	}
-	return out
-}
-
-func resolveGitHubRelease(repoOrURL string) (downloadURL, cleanRepo, tag string, err error) {
-	trimmed := strings.TrimSpace(repoOrURL)
-	if strings.HasSuffix(strings.ToLower(trimmed), ".appimage") {
-		return trimmed, "", "", nil
-	}
-
-	repo := strings.Trim(strings.TrimPrefix(trimmed, "https://github.com/"), "/")
-	if repo == "" {
-		return "", "", "", fmt.Errorf("This app doesn't have a download link we can use automatically.")
-	}
-
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(apiURL)
-	if err != nil {
-		return "", "", "", fmt.Errorf("Couldn't reach GitHub to check for a download.")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		return "", "", "", fmt.Errorf("GitHub didn't have a release ready for this app (status %d).", resp.StatusCode)
-	}
-
-	var rel struct {
-		TagName string `json:"tag_name"`
-		Assets  []struct {
-			Name               string `json:"name"`
-			BrowserDownloadURL string `json:"browser_download_url"`
-		} `json:"assets"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-		return "", "", "", fmt.Errorf("Couldn't read the release info from GitHub.")
-	}
-
-	arch := "x86_64"
-	if runtime.GOARCH == "arm64" {
-		arch = "aarch64"
-	}
-
-	var fallback string
-	for _, a := range rel.Assets {
-		lower := strings.ToLower(a.Name)
-		if strings.HasSuffix(lower, ".appimage") {
-			if strings.Contains(lower, arch) || strings.Contains(lower, "amd64") {
-				return a.BrowserDownloadURL, repo, formatVersionTag(rel.TagName), nil
-			}
-			if fallback == "" {
-				fallback = a.BrowserDownloadURL
-			}
-		}
-	}
-	if fallback != "" {
-		return fallback, repo, formatVersionTag(rel.TagName), nil
-	}
-	return "", "", "", fmt.Errorf("This app doesn't publish an AppImage file in its latest release.")
-}
-
-func findDesktopFiles(squashRoot string) []string {
-	matches, _ := filepath.Glob(filepath.Join(squashRoot, "*.desktop"))
-	if len(matches) == 0 {
-		matches, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/applications/*.desktop"))
-	}
-	return matches
-}
-
-func extractCategories(squashRoot string) string {
-	for _, path := range findDesktopFiles(squashRoot) {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "Categories=") {
-				cats := strings.TrimSpace(strings.TrimPrefix(trimmed, "Categories="))
-				if cats != "" {
-					return cats
-				}
-			}
-		}
-	}
-	return "Utility;"
-}
-
-func extractStartupWMClass(squashRoot string) string {
-	for _, path := range findDesktopFiles(squashRoot) {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "StartupWMClass=") {
-				wmClass := strings.TrimSpace(strings.TrimPrefix(trimmed, "StartupWMClass="))
-				if wmClass != "" {
-					return wmClass
-				}
-			}
-		}
-	}
-	return ""
-}
-
-func extractDisplayName(squashRoot, fallback string) string {
-	for _, path := range findDesktopFiles(squashRoot) {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "Name=") {
-				name := strings.TrimSpace(strings.TrimPrefix(trimmed, "Name="))
-				if name != "" {
-					return name
-				}
-			}
-		}
-	}
-	return cleanFallbackName(fallback)
-}
-
-func extractAppDescription(squashRoot string) (desc, homepage string) {
-	xmlMatches, _ := filepath.Glob(filepath.Join(squashRoot, "usr/share/metainfo/*.xml"))
-	if len(xmlMatches) == 0 {
-		xmlMatches, _ = filepath.Glob(filepath.Join(squashRoot, "*.appdata.xml"))
-	}
-	for _, path := range xmlMatches {
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		var doc appStreamXML
-		if err := xml.Unmarshal(raw, &doc); err != nil {
-			continue
-		}
-		var parts []string
-		for _, p := range doc.Description.Paragraphs {
-			if t := strings.TrimSpace(p); t != "" {
-				parts = append(parts, t)
-			}
-		}
-		for _, li := range doc.Description.Items {
-			if t := strings.TrimSpace(li); t != "" {
-				parts = append(parts, "• "+t)
-			}
-		}
-		for _, u := range doc.URLs {
-			if u.Type == "homepage" && strings.TrimSpace(u.Href) != "" {
-				homepage = strings.TrimSpace(u.Href)
-				break
-			}
-		}
-		if len(parts) > 0 {
-			return strings.Join(parts, "\n\n"), homepage
-		}
-		if s := strings.TrimSpace(doc.Summary); s != "" {
-			return s, homepage
-		}
-	}
-
-	for _, path := range findDesktopFiles(squashRoot) {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "Comment=") {
-				if c := strings.TrimSpace(strings.TrimPrefix(trimmed, "Comment=")); c != "" {
-					return c, homepage
-				}
-			}
-		}
-	}
-
-	return "", homepage
-}
-
-func pickLargestFile(paths []string) string {
-	if len(paths) == 0 {
-		return ""
-	}
-	type candidate struct {
-		path string
-		size int64
-	}
-	var list []candidate
-	for _, p := range paths {
-		if info, err := os.Stat(p); err == nil && !info.IsDir() {
-			list = append(list, candidate{path: p, size: info.Size()})
-		}
-	}
-	if len(list) == 0 {
-		return ""
-	}
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].size > list[j].size
-	})
-	return list[0].path
-}
-
-func installIcon(squashRoot, slug, source string) string {
-	iconName := "ahhhh-" + slug
-
-	svgs, _ := filepath.Glob(filepath.Join(squashRoot, "*.svg"))
-	if len(svgs) == 0 {
-		svgs, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor/scalable/apps/*.svg"))
-	}
-	if bestSVG := pickLargestFile(svgs); bestSVG != "" {
-		destDir := filepath.Join(iconBaseDir, "scalable/apps")
-		_ = os.MkdirAll(destDir, 0755)
-		dest := filepath.Join(destDir, iconName+".svg")
-		if err := copyFileSimple(bestSVG, dest, 0644); err == nil {
-			return iconName
-		}
-	}
-
-	pngs, _ := filepath.Glob(filepath.Join(squashRoot, "*.png"))
-	if len(pngs) == 0 {
-		pngs, _ = filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor/256x256/apps/*.png"))
-	}
-	if len(pngs) == 0 {
-		for _, size := range []string{"512x512", "128x128", "64x64", "48x48"} {
-			sized, _ := filepath.Glob(filepath.Join(squashRoot, "usr/share/icons/hicolor", size, "apps/*.png"))
-			if len(sized) > 0 {
-				pngs = append(pngs, sized...)
-				break
-			}
-		}
-	}
-	if len(pngs) == 0 {
-		dirIcon := filepath.Join(squashRoot, ".DirIcon")
-		if info, err := os.Stat(dirIcon); err == nil && !info.IsDir() {
-			pngs = append(pngs, dirIcon)
-		}
-	}
-	if len(pngs) == 0 && slug == "ahhhh" {
-		candidates := []string{
-			filepath.Join(squashRoot, "packaging/ahhhh.png"),
-			"packaging/ahhhh.png",
-		}
-		if source != "" && !strings.HasPrefix(source, "http://") && !strings.HasPrefix(source, "https://") {
-			sourceDir := filepath.Dir(source)
-			candidates = append(candidates,
-				filepath.Join(sourceDir, "packaging/ahhhh.png"),
-				filepath.Join(filepath.Dir(sourceDir), "packaging/ahhhh.png"),
-			)
-		}
-		if exe, err := os.Executable(); err == nil {
-			exeDir := filepath.Dir(exe)
-			candidates = append(candidates,
-				filepath.Join(exeDir, "packaging/ahhhh.png"),
-				filepath.Join(filepath.Dir(exeDir), "packaging/ahhhh.png"),
-			)
-		}
-		for _, cand := range candidates {
-			if info, err := os.Stat(cand); err == nil && !info.IsDir() {
-				pngs = append(pngs, cand)
-				break
-			}
-		}
-	}
-	if bestPNG := pickLargestFile(pngs); bestPNG != "" {
-		destDir := filepath.Join(iconBaseDir, "256x256/apps")
-		_ = os.MkdirAll(destDir, 0755)
-		dest := filepath.Join(destDir, iconName+".png")
-		if err := copyFileSimple(bestPNG, dest, 0644); err == nil {
-			return iconName
-		}
-	}
-
-	return ""
-}
-
-func filteredChildEnv() []string {
-	var env []string
-	for _, kv := range os.Environ() {
-		if strings.HasPrefix(kv, "APPIMAGE=") ||
-			strings.HasPrefix(kv, "APPDIR=") ||
-			strings.HasPrefix(kv, "ARGV0=") ||
-			strings.HasPrefix(kv, "OWD=") {
-			continue
-		}
-		env = append(env, kv)
-	}
-	return env
-}
-
-func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) error {
-	tmpDir, err := os.MkdirTemp("", "ahhhh-dl-*")
-	if err != nil {
-		return fmt.Errorf("Couldn't create a temporary working folder.")
-	}
-	defer os.RemoveAll(tmpDir)
-
-	isHTTP := strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://")
-	tmpFile := filepath.Join(tmpDir, "payload.AppImage")
-
-	if isHTTP {
-		client := &http.Client{Timeout: 3 * time.Minute}
-		resp, err := client.Get(source)
-		if err != nil {
-			return fmt.Errorf("Download failed while connecting.")
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode >= 400 {
-			return fmt.Errorf("Couldn't download the AppImage file (server returned %d).", resp.StatusCode)
-		}
-		out, err := os.Create(tmpFile)
-		if err != nil {
-			return fmt.Errorf("Couldn't save the downloaded file.")
-		}
-		if _, err := io.Copy(out, resp.Body); err != nil {
-			out.Close()
-			return fmt.Errorf("Download got cut off before finishing.")
-		}
-		out.Close()
-	} else {
-		if err := copyFileSimple(source, tmpFile, 0755); err != nil {
-			return fmt.Errorf("Couldn't read the local AppImage file.")
-		}
-	}
-
-	if err := os.Chmod(tmpFile, 0755); err != nil {
-		return fmt.Errorf("Couldn't make the app executable.")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-	defer cancel()
-
-	extractCmd := exec.CommandContext(ctx, tmpFile, "--appimage-extract")
-	extractCmd.Dir = tmpDir
-	extractCmd.Env = filteredChildEnv()
-	_ = extractCmd.Run()
-	squashRoot := filepath.Join(tmpDir, "squashfs-root")
-
-	baseSource := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
-	displayName := strings.TrimSpace(rawName)
-	if displayName == "" {
-		displayName = extractDisplayName(squashRoot, baseSource)
-	}
-
-	slug := slugify(displayName)
-	if slug == "" {
-		return fmt.Errorf("Invalid app name.")
-	}
-
-	if slug == "ahhhh" || strings.HasPrefix(slug, "ahhhh-") || strings.HasPrefix(slug, "ahhhh_") {
-		slug = "ahhhh"
-		displayName = "ahhhh"
-		if githubRepo == "" {
-			githubRepo = selfRepo
-		}
-	}
-
-	if githubRepo == "" {
-		if prev, ok := readMeta(slug); ok && prev.GitHubRepo != "" {
-			githubRepo = prev.GitHubRepo
-		}
-	}
-
-	if releaseTag == "" || strings.EqualFold(releaseTag, "local") {
-		if detected := detectVersionTag(rawName, baseSource); detected != "" {
-			releaseTag = detected
-		} else {
-			releaseTag = "local"
-		}
-	} else {
-		releaseTag = formatVersionTag(releaseTag)
-	}
-
-	appDir := filepath.Join(optDir, slug)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		return fmt.Errorf("Couldn't create /opt/appimages/%s.", slug)
-	}
-
-	destBin := filepath.Join(appDir, slug+".AppImage")
-	stageBin := destBin + ".new"
-	if err := copyFileSimple(tmpFile, stageBin, 0755); err != nil {
-		_ = os.Remove(stageBin)
-		return fmt.Errorf("Couldn't stage the app in /opt/appimages.")
-	}
-	if err := os.Rename(stageBin, destBin); err != nil {
-		_ = os.Remove(stageBin)
-		return fmt.Errorf("Couldn't move the app into /opt/appimages.")
-	}
-
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		return fmt.Errorf("Couldn't create /usr/local/bin.")
-	}
-
-	symlink := filepath.Join(binDir, slug)
-	_ = os.Remove(symlink)
-	if err := os.Symlink(destBin, symlink); err != nil {
-		return fmt.Errorf("Couldn't add a command shortcut in /usr/local/bin.")
-	}
-
-	iconName := installIcon(squashRoot, slug, source)
-	categories := extractCategories(squashRoot)
-	if slug == "ahhhh" && (categories == "" || categories == "Utility;") {
-		categories = "System;Utility;"
-	}
-	wmClass := extractStartupWMClass(squashRoot)
-	description, homepage := extractAppDescription(squashRoot)
-	if slug == "ahhhh" && description == "" {
-		description = "Simple Linux AppImage Installer"
-	}
-
-	if err := os.MkdirAll(desktopDir, 0755); err != nil {
-		return fmt.Errorf("Couldn't create the app menu folder.")
-	}
-
-	iconLine := ""
-	if iconName != "" {
-		iconLine = fmt.Sprintf("Icon=%s\n", iconName)
-	}
-
-	wmClassLine := ""
-	if wmClass != "" {
-		wmClassLine = fmt.Sprintf("StartupWMClass=%s\n", wmClass)
-	}
-
-	commentLine := ""
-	if singleLine := strings.TrimSpace(strings.Split(description, "\n")[0]); singleLine != "" {
-		commentLine = fmt.Sprintf("Comment=%s\n", singleLine)
-	}
-
-	desktopEntry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\n%sExec=%s %%U\nTryExec=%s\n%s%sCategories=%s\nTerminal=false\n", displayName, commentLine, symlink, symlink, iconLine, wmClassLine, categories)
-	desktopPath := filepath.Join(desktopDir, "ahhhh-"+slug+".desktop")
-	if err := os.WriteFile(desktopPath, []byte(desktopEntry), 0644); err != nil {
-		return fmt.Errorf("Couldn't add the app to your desktop menu.")
-	}
-
-	meta := InstallMeta{
-		Name:        displayName,
-		Slug:        slug,
-		Source:      source,
-		GitHubRepo:  githubRepo,
-		ReleaseTag:  releaseTag,
-		Description: description,
-		Homepage:    homepage,
-		InstalledAt: time.Now().UTC().Format(time.RFC3339),
-	}
-	if metaBytes, err := json.MarshalIndent(meta, "", "  "); err == nil {
-		_ = os.WriteFile(filepath.Join(appDir, "meta.json"), metaBytes, 0644)
-	}
-
-	_ = exec.Command("update-desktop-database", desktopDir).Run()
-	_ = exec.Command("gtk-update-icon-cache", "-f", "-t", iconBaseDir).Run()
-	return nil
-}
-
-func removeAppImageSystemWide(rawName string) error {
-	slug := slugify(rawName)
-	if slug == "" {
-		return fmt.Errorf("Invalid app name.")
-	}
-
-	_ = os.RemoveAll(filepath.Join(optDir, slug))
-	_ = os.Remove(filepath.Join(binDir, slug))
-	_ = os.Remove(filepath.Join(desktopDir, "ahhhh-"+slug+".desktop"))
-	_ = os.Remove(filepath.Join(iconBaseDir, "scalable/apps", "ahhhh-"+slug+".svg"))
-	_ = os.Remove(filepath.Join(iconBaseDir, "256x256/apps", "ahhhh-"+slug+".png"))
-
-	_ = exec.Command("update-desktop-database", desktopDir).Run()
-	_ = exec.Command("gtk-update-icon-cache", "-f", "-t", iconBaseDir).Run()
-	return nil
-}
-
-func copyFileSimple(src, dst string, mode os.FileMode) error {
-	in, err := os.Open(src)
+func downloadFile(url, dest string) error {
+	client := &http.Client{Timeout: 10 * time.Minute}
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.0")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with HTTP %d", resp.StatusCode)
+	}
+
+	out, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-	_, err = io.Copy(out, in)
+
+	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+func isELFFile(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	var hdr [4]byte
+	n, err := io.ReadFull(f, hdr[:])
+	if err != nil || n < 4 {
+		return false
+	}
+	return bytes.Equal(hdr[:], []byte{0x7f, 'E', 'L', 'F'})
+}
+
+func extractArchive(archivePath, archiveName, destDir string) error {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
+	}
+	lower := strings.ToLower(archiveName)
+
+	switch {
+	case strings.HasSuffix(lower, ".zip"):
+		r, err := zip.OpenReader(archivePath)
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		for _, f := range r.File {
+			cleanName := filepath.Clean(f.Name)
+			if strings.HasPrefix(cleanName, "..") || filepath.IsAbs(cleanName) {
+				continue
+			}
+			target := filepath.Join(destDir, cleanName)
+			if f.FileInfo().IsDir() {
+				_ = os.MkdirAll(target, 0o755)
+				continue
+			}
+			_ = os.MkdirAll(filepath.Dir(target), 0o755)
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
+			if err != nil {
+				rc.Close()
+				return err
+			}
+			_, copyErr := io.Copy(out, rc)
+			out.Close()
+			rc.Close()
+			if copyErr != nil {
+				return copyErr
+			}
+		}
+		return nil
+
+	case strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
+		f, err := os.Open(archivePath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			return err
+		}
+		defer gz.Close()
+		return untarStream(gz, destDir)
+
+	case strings.HasSuffix(lower, ".tar.xz"), strings.HasSuffix(lower, ".txz"):
+		cmd := exec.Command("tar", "-xJf", archivePath, "-C", destDir)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("tar -xJf failed: %v (%s)", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+
+	default:
+		return fmt.Errorf("unsupported archive format: %s", archiveName)
+	}
+}
+
+func untarStream(r io.Reader, destDir string) error {
+	tr := tar.NewReader(r)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		cleanName := filepath.Clean(hdr.Name)
+		if strings.HasPrefix(cleanName, "..") || filepath.IsAbs(cleanName) || cleanName == "." {
+			continue
+		}
+		target := filepath.Join(destDir, cleanName)
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			_ = os.MkdirAll(target, 0o755)
+		case tar.TypeReg:
+			_ = os.MkdirAll(filepath.Dir(target), 0o755)
+			mode := os.FileMode(hdr.Mode)
+			if mode == 0 {
+				mode = 0o644
+			}
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+			if err != nil {
+				return err
+			}
+			_, copyErr := io.Copy(out, tr)
+			out.Close()
+			if copyErr != nil {
+				return copyErr
+			}
+		case tar.TypeSymlink:
+			_ = os.MkdirAll(filepath.Dir(target), 0o755)
+			_ = os.Remove(target)
+			_ = os.Symlink(hdr.Linkname, target)
+		}
+	}
+	return nil
+}
+
+func findPrimaryBinaryInTree(rootDir, slug string) (string, string, error) {
+	type cand struct {
+		path  string
+		score int
+	}
+	var cands []cand
+	var bestIcon string
+
+	_ = filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info == nil || info.IsDir() {
+			return nil
+		}
+		base := strings.ToLower(info.Name())
+		if bestIcon == "" && (strings.HasSuffix(base, ".png") || strings.HasSuffix(base, ".svg")) {
+			if strings.Contains(base, slug) || strings.Contains(base, "icon") || strings.Contains(base, "logo") {
+				bestIcon = path
+			}
+		}
+
+		if info.Mode()&0o111 != 0 || isELFFile(path) {
+			if isELFFile(path) {
+				sc := 10
+				if base == slug {
+					sc += 100
+				} else if strings.Contains(base, slug) {
+					sc += 50
+				}
+				// Prefer binaries inside bin/ or top-level
+				rel, _ := filepath.Rel(rootDir, path)
+				depth := strings.Count(rel, string(os.PathSeparator))
+				sc -= depth * 5
+				if strings.Contains(strings.ToLower(rel), "/bin/") {
+					sc += 25
+				}
+				cands = append(cands, cand{path: path, score: sc})
+			}
+		}
+		return nil
+	})
+
+	if len(cands) == 0 {
+		return "", bestIcon, fmt.Errorf("no Linux ELF executable found inside archive")
+	}
+	sort.Slice(cands, func(i, j int) bool {
+		return cands[i].score > cands[j].score
+	})
+	return cands[0].path, bestIcon, nil
+}
+
+func generateFallbackIcon(destPNG string, label string) {
+	// Minimal valid 1x1 PNG fallback if no icon exists in package
+	pngBytes := []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+		0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0xf8, 0x4f, 0x95, 0xf1,
+		0x1f, 0x00, 0x05, 0x10, 0x02, 0x55, 0x18, 0x67,
+		0x8a, 0x09, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+		0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+	}
+	_ = label
+	_ = os.WriteFile(destPNG, pngBytes, 0o644)
+}
+
+func stagePackageFromFile(stagedFile, origFilename, appName, repo, tag, desc string) (string, error) {
+	slug := slugify(appName)
+	stageDir, err := os.MkdirTemp("", "ahhhh-stage-*")
+	if err != nil {
+		return "", err
+	}
+
+	kind := classifyAssetKind(origFilename)
+	if kind == "binary" {
+		// Check if uploaded local file is actually an AppImage by magic/extension
+		if strings.HasSuffix(strings.ToLower(origFilename), ".appimage") {
+			kind = "appimage"
+		}
+	}
+
+	var execRelPath string
+	stagedIcon := filepath.Join(stageDir, slug+".png")
+	hasIcon := false
+
+	switch kind {
+	case "appimage":
+		destBin := filepath.Join(stageDir, slug+".AppImage")
+		data, err := os.ReadFile(stagedFile)
+		if err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		if err := os.WriteFile(destBin, data, 0o755); err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		execRelPath = filepath.Join(appDir, slug+".AppImage")
+
+		// Attempt AppImage icon extraction
+		extractTmp, err := os.MkdirTemp("", "ahhhh-ai-ext-*")
+		if err == nil {
+			cmd := exec.Command(destBin, "--appimage-extract")
+			cmd.Dir = extractTmp
+			if err := cmd.Run(); err == nil {
+				squash := filepath.Join(extractTmp, "squashfs-root")
+				_ = filepath.Walk(squash, func(p string, info os.FileInfo, e error) error {
+					if e != nil || info == nil || info.IsDir() || hasIcon {
+						return nil
+					}
+					if strings.HasSuffix(strings.ToLower(info.Name()), ".png") {
+						if b, rerr := os.ReadFile(p); rerr == nil && len(b) > 0 {
+							_ = os.WriteFile(stagedIcon, b, 0o644)
+							hasIcon = true
+						}
+					}
+					return nil
+				})
+			}
+			os.RemoveAll(extractTmp)
+		}
+
+	case "archive":
+		bundleStage := filepath.Join(stageDir, "bundle")
+		if err := extractArchive(stagedFile, origFilename, bundleStage); err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		binInTree, iconInTree, err := findPrimaryBinaryInTree(bundleStage, slug)
+		if err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		_ = os.Chmod(binInTree, 0o755)
+		relBin, err := filepath.Rel(bundleStage, binInTree)
+		if err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		execRelPath = filepath.Join(appDir, slug, relBin)
+		if iconInTree != "" {
+			if b, err := os.ReadFile(iconInTree); err == nil && len(b) > 0 {
+				_ = os.WriteFile(stagedIcon, b, 0o644)
+				hasIcon = true
+			}
+		}
+
+	case "binary":
+		if !isELFFile(stagedFile) {
+			os.RemoveAll(stageDir)
+			return "", fmt.Errorf("downloaded file %q is not a valid Linux ELF binary or archive", origFilename)
+		}
+		destBin := filepath.Join(stageDir, slug)
+		data, err := os.ReadFile(stagedFile)
+		if err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		if err := os.WriteFile(destBin, data, 0o755); err != nil {
+			os.RemoveAll(stageDir)
+			return "", err
+		}
+		execRelPath = filepath.Join(appDir, slug)
+	}
+
+	if !hasIcon {
+		generateFallbackIcon(stagedIcon, appName)
+	}
+
+	// Preserve existing GitHubRepo if local drop-in updates an existing app
+	if repo == "" {
+		if existing, err := readAppMeta(slug); err == nil && existing != nil && existing.GitHubRepo != "" {
+			repo = existing.GitHubRepo
+		}
+	}
+
+	meta := AppMeta{
+		Name:        appName,
+		Slug:        slug,
+		GitHubRepo:  repo,
+		InstalledAt: time.Now().UTC().Format(time.RFC3339),
+		Tag:         tag,
+		AssetName:   origFilename,
+		Kind:        kind,
+		ExecPath:    execRelPath,
+		Description: desc,
+	}
+	metaBytes, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		os.RemoveAll(stageDir)
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(stageDir, slug+".meta.json"), metaBytes, 0o644); err != nil {
+		os.RemoveAll(stageDir)
+		return "", err
+	}
+
+	desktopContent := fmt.Sprintf(`[Desktop Entry]
+Type=Application
+Name=%s
+Comment=%s
+Exec=%s
+Icon=%s
+Terminal=false
+Categories=Utility;
+`, appName, strings.ReplaceAll(desc, "\n", " "), filepath.Join(binDir, slug), slug)
+
+	if err := os.WriteFile(filepath.Join(stageDir, slug+".desktop"), []byte(desktopContent), 0o644); err != nil {
+		os.RemoveAll(stageDir)
+		return "", err
+	}
+
+	return stageDir, nil
+}
+
+func commitStagedDirs(stageDirs []string) error {
+	if len(stageDirs) == 0 {
+		return nil
+	}
+	defer func() {
+		for _, d := range stageDirs {
+			_ = os.RemoveAll(d)
+		}
+	}()
+
+	var script strings.Builder
+	script.WriteString("set -e\n")
+	script.WriteString(fmt.Sprintf("mkdir -p %q %q %q %q\n", appDir, binDir, desktopDir, iconDir))
+
+	for _, sd := range stageDirs {
+		metaFiles, err := filepath.Glob(filepath.Join(sd, "*.meta.json"))
+		if err != nil || len(metaFiles) == 0 {
+			return fmt.Errorf("missing staged metadata in %s", sd)
+		}
+		raw, err := os.ReadFile(metaFiles[0])
+		if err != nil {
+			return err
+		}
+		var meta AppMeta
+		if err := json.Unmarshal(raw, &meta); err != nil {
+			return err
+		}
+		slug := meta.Slug
+
+		// Clean previous artifacts for this slug before copying new ones
+		script.WriteString(fmt.Sprintf("rm -rf %q %q %q\n",
+			filepath.Join(appDir, slug),
+			filepath.Join(appDir, slug+".AppImage"),
+			filepath.Join(appDir, slug),
+		))
+
+		switch meta.Kind {
+		case "appimage":
+			script.WriteString(fmt.Sprintf("install -m 0755 %q %q\n",
+				filepath.Join(sd, slug+".AppImage"),
+				filepath.Join(appDir, slug+".AppImage"),
+			))
+		case "archive":
+			script.WriteString(fmt.Sprintf("cp -a %q %q\n",
+				filepath.Join(sd, "bundle"),
+				filepath.Join(appDir, slug),
+			))
+			script.WriteString(fmt.Sprintf("chmod 0755 %q\n", meta.ExecPath))
+		case "binary":
+			script.WriteString(fmt.Sprintf("install -m 0755 %q %q\n",
+				filepath.Join(sd, slug),
+				filepath.Join(appDir, slug),
+			))
+		}
+
+		script.WriteString(fmt.Sprintf("ln -sf %q %q\n", meta.ExecPath, filepath.Join(binDir, slug)))
+		script.WriteString(fmt.Sprintf("install -m 0644 %q %q\n",
+			filepath.Join(sd, slug+".meta.json"),
+			filepath.Join(appDir, slug+".meta.json"),
+		))
+		script.WriteString(fmt.Sprintf("install -m 0644 %q %q\n",
+			filepath.Join(sd, slug+".desktop"),
+			filepath.Join(desktopDir, slug+".desktop"),
+		))
+		script.WriteString(fmt.Sprintf("install -m 0644 %q %q\n",
+			filepath.Join(sd, slug+".png"),
+			filepath.Join(iconDir, slug+".png"),
+		))
+	}
+
+	script.WriteString("command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications || true\n")
+
+	cmd := exec.Command("pkexec", "sh", "-c", script.String())
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("admin install failed: %v (%s)", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func installFromURL(appName, rawURL string) error {
+	stageDir, err := prepareStagedInstallFromURL(appName, rawURL)
+	if err != nil {
+		return err
+	}
+	return commitStagedDirs([]string{stageDir})
+}
+
+func prepareStagedInstallFromURL(appName, rawURL string) (string, error) {
+	u := strings.TrimSpace(rawURL)
+	if u == "" {
+		return "", fmt.Errorf("missing download URL")
+	}
+
+	// If URL is a GitHub repo or release URL without a direct binary extension, resolve via GitHub Releases API
+	repo := parseGitHubRepo(u)
+	lowerU := strings.ToLower(u)
+	isDirectAsset := strings.HasSuffix(lowerU, ".appimage") ||
+		strings.HasSuffix(lowerU, ".tar.gz") ||
+		strings.HasSuffix(lowerU, ".tgz") ||
+		strings.HasSuffix(lowerU, ".tar.xz") ||
+		strings.HasSuffix(lowerU, ".zip") ||
+		strings.Contains(lowerU, "/releases/download/")
+
+	var dlURL, assetName, tag, desc string
+	if repo != "" && !isDirectAsset {
+		resolved, err := resolveGitHubTarget(repo, appName)
+		if err != nil {
+			return "", err
+		}
+		if appName == "" {
+			appName = resolved.Name
+		}
+		dlURL = resolved.DownloadURL
+		assetName = resolved.AssetName
+		tag = resolved.Tag
+		desc = resolved.Description
+	} else {
+		dlURL = u
+		assetName = filepath.Base(strings.Split(u, "?")[0])
+		if appName == "" {
+			appName = strings.TrimSuffix(assetName, filepath.Ext(assetName))
+		}
+	}
+
+	tmpFile, err := os.CreateTemp("", "ahhhh-dl-*")
+	if err != nil {
+		return "", err
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	defer os.Remove(tmpPath)
+
+	if err := downloadFile(dlURL, tmpPath); err != nil {
+		return "", err
+	}
+
+	return stagePackageFromFile(tmpPath, assetName, appName, repo, tag, desc)
+}
+
+func installLocalFile(tmpPath, origFilename, customName string) error {
+	appName := strings.TrimSpace(customName)
+	if appName == "" {
+		base := origFilename
+		for _, suf := range []string{".AppImage", ".appimage", ".tar.gz", ".tgz", ".tar.xz", ".zip"} {
+			if strings.HasSuffix(base, suf) {
+				base = strings.TrimSuffix(base, suf)
+				break
+			}
+		}
+		appName = base
+	}
+	stageDir, err := stagePackageFromFile(tmpPath, origFilename, appName, "", "", "")
+	if err != nil {
+		return err
+	}
+	return commitStagedDirs([]string{stageDir})
+}
+
+func removeInstalledApp(appName string) error {
+	slug := slugify(appName)
+	script := fmt.Sprintf(`set -e
+rm -rf %q %q %q %q %q %q
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications || true
+`,
+		filepath.Join(appDir, slug),
+		filepath.Join(appDir, slug+".AppImage"),
+		filepath.Join(appDir, slug+".meta.json"),
+		filepath.Join(binDir, slug),
+		filepath.Join(desktopDir, slug+".desktop"),
+		filepath.Join(iconDir, slug+".png"),
+	)
+	cmd := exec.Command("pkexec", "sh", "-c", script)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("remove failed: %v (%s)", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func readAppMeta(slug string) (*AppMeta, error) {
+	raw, err := os.ReadFile(filepath.Join(appDir, slug+".meta.json"))
+	if err != nil {
+		return nil, err
+	}
+	var m AppMeta
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func listInstalledMeta() map[string]AppMeta {
+	out := make(map[string]AppMeta)
+	files, err := filepath.Glob(filepath.Join(appDir, "*.meta.json"))
+	if err != nil {
+		return out
+	}
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var m AppMeta
+		if err := json.Unmarshal(raw, &m); err == nil && m.Slug != "" {
+			out[m.Slug] = m
+		}
+	}
+	return out
 }
