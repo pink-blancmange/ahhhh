@@ -620,7 +620,6 @@ func stagePackageFromFile(stagedFile, origFilename, appName, repo, tag, desc str
 
 	kind := classifyAssetKind(origFilename)
 	if kind == "binary" {
-		// Check if uploaded local file is actually an AppImage by magic/extension
 		if strings.HasSuffix(strings.ToLower(origFilename), ".appimage") {
 			kind = "appimage"
 		}
@@ -790,10 +789,9 @@ func commitStagedDirs(stageDirs []string) error {
 		slug := meta.Slug
 
 		// Clean previous artifacts for this slug before copying new ones
-		script.WriteString(fmt.Sprintf("rm -rf %q %q %q\n",
+		script.WriteString(fmt.Sprintf("rm -rf %q %q\n",
 			filepath.Join(appDir, slug),
 			filepath.Join(appDir, slug+".AppImage"),
-			filepath.Join(appDir, slug),
 		))
 
 		switch meta.Kind {
@@ -880,7 +878,7 @@ func prepareStagedInstallFromURL(appName, rawURL string) (string, error) {
 		dlURL = u
 		assetName = filepath.Base(strings.Split(u, "?")[0])
 		if appName == "" {
-			appName = strings.TrimSuffix(assetName, filepath.Ext(assetName))
+			appName = deriveAppNameFromFilename(assetName)
 		}
 	}
 
@@ -899,17 +897,58 @@ func prepareStagedInstallFromURL(appName, rawURL string) (string, error) {
 	return stagePackageFromFile(tmpPath, assetName, appName, repo, tag, desc)
 }
 
+func deriveAppNameFromFilename(origFilename string) string {
+	name := strings.TrimSpace(origFilename)
+	lower := strings.ToLower(name)
+
+	// Strip compound and single package extensions first
+	exts := []string{
+		".appimage", ".tar.gz", ".tgz", ".tar.xz", ".txz", ".zip", ".bin", ".run",
+	}
+	for _, ext := range exts {
+		if strings.HasSuffix(lower, ext) {
+			name = name[:len(name)-len(ext)]
+			break
+		}
+	}
+
+	// Strip common architecture, libc, and AppImage suffixes
+	archRe := regexp.MustCompile(`(?i)[._-](x86_64|amd64|x64|aarch64|arm64|armv7l?|armhf|i386|i686|386|musl|gnu|glibc|linux|appimage)$`)
+	for {
+		next := archRe.ReplaceAllString(name, "")
+		if next == name || strings.TrimSpace(next) == "" {
+			break
+		}
+		name = next
+	}
+
+	// Strip trailing version segments like -1.14.0, _2.3.1-beta.1, v0.4.0, or -20260101
+	verRe := regexp.MustCompile(`(?i)[._-]v?\d+(?:\.\d+)+(?:[-._]?(?:rc|alpha|beta|dev|nightly|snapshot|b)[._-]?\d*)?$`)
+	for {
+		next := verRe.ReplaceAllString(name, "")
+		if next == name || strings.TrimSpace(next) == "" {
+			break
+		}
+		name = next
+	}
+
+	// Strip standalone trailing numeric build/release token if preceded by - or _
+	buildRe := regexp.MustCompile(`(?i)[._-]v?\d+$`)
+	if next := buildRe.ReplaceAllString(name, ""); next != name && strings.TrimSpace(next) != "" {
+		name = next
+	}
+
+	name = strings.Trim(name, "._- ")
+	if name == "" {
+		return "app"
+	}
+	return name
+}
+
 func installLocalFile(tmpPath, origFilename, customName string) error {
 	appName := strings.TrimSpace(customName)
 	if appName == "" {
-		base := origFilename
-		for _, suf := range []string{".AppImage", ".appimage", ".tar.gz", ".tgz", ".tar.xz", ".zip"} {
-			if strings.HasSuffix(base, suf) {
-				base = strings.TrimSuffix(base, suf)
-				break
-			}
-		}
-		appName = base
+		appName = deriveAppNameFromFilename(origFilename)
 	}
 	stageDir, err := stagePackageFromFile(tmpPath, origFilename, appName, "", "", "")
 	if err != nil {
