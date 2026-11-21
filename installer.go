@@ -20,6 +20,7 @@ const (
 	binDir      = "/usr/local/bin"
 	desktopDir  = "/usr/local/share/applications"
 	iconBaseDir = "/usr/local/share/icons/hicolor"
+	selfRepo    = "pink-blancmange/ahhhh"
 )
 
 type InstallMeta struct {
@@ -45,9 +46,23 @@ type appStreamXML struct {
 	} `xml:"url"`
 }
 
+var semverTagRe = regexp.MustCompile(`v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`)
+
 func slugify(name string) string {
 	re := regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 	return strings.ToLower(strings.Trim(re.ReplaceAllString(name, "-"), "-"))
+}
+
+func detectVersionTag(candidates ...string) string {
+	for _, c := range candidates {
+		if m := semverTagRe.FindString(c); m != "" {
+			if !strings.HasPrefix(m, "v") {
+				return "v" + m
+			}
+			return m
+		}
+	}
+	return ""
 }
 
 func readMeta(slug string) (*InstallMeta, bool) {
@@ -274,6 +289,20 @@ func installIcon(squashRoot, slug string) string {
 	return ""
 }
 
+func filteredChildEnv() []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "APPIMAGE=") ||
+			strings.HasPrefix(kv, "APPDIR=") ||
+			strings.HasPrefix(kv, "ARGV0=") ||
+			strings.HasPrefix(kv, "OWD=") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return env
+}
+
 func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) error {
 	tmpDir, err := os.MkdirTemp("", "ahhhh-dl-*")
 	if err != nil {
@@ -315,18 +344,32 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 
 	extractCmd := exec.Command(tmpFile, "--appimage-extract")
 	extractCmd.Dir = tmpDir
+	extractCmd.Env = filteredChildEnv()
 	_ = extractCmd.Run()
 	squashRoot := filepath.Join(tmpDir, "squashfs-root")
 
+	baseSource := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
 	displayName := strings.TrimSpace(rawName)
 	if displayName == "" {
-		base := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
-		displayName = extractDisplayName(squashRoot, base)
+		displayName = extractDisplayName(squashRoot, baseSource)
 	}
 
 	slug := slugify(displayName)
 	if slug == "" {
 		return fmt.Errorf("Invalid app name.")
+	}
+
+	if slug == "ahhhh" || strings.HasPrefix(slug, "ahhhh-") || strings.HasPrefix(slug, "ahhhh_") {
+		slug = "ahhhh"
+		displayName = "AppAppApp"
+		if githubRepo == "" {
+			githubRepo = selfRepo
+		}
+		if releaseTag == "" || releaseTag == "local" {
+			if detected := detectVersionTag(rawName, baseSource); detected != "" {
+				releaseTag = detected
+			}
+		}
 	}
 
 	appDir := filepath.Join(optDir, slug)
@@ -355,6 +398,9 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 	iconName := installIcon(squashRoot, slug)
 	categories := extractCategories(squashRoot)
 	description, homepage := extractAppDescription(squashRoot)
+	if slug == "ahhhh" && description == "" {
+		description = "Simple Linux AppImage Installer"
+	}
 
 	if err := os.MkdirAll(desktopDir, 0755); err != nil {
 		return fmt.Errorf("Couldn't create the app menu folder.")

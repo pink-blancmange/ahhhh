@@ -65,7 +65,6 @@ var (
 	updateStatusMap = make(map[string]UpdateCheckEntry)
 	updateStatusMu  sync.RWMutex
 	updateCheckMu   sync.Mutex
-	lastUpdateCheck time.Time
 )
 
 func loadFeed() ([]AppItem, error) {
@@ -141,7 +140,6 @@ func runBackgroundUpdateCheck() {
 	for k, v := range nextMap {
 		updateStatusMap[k] = v
 	}
-	lastUpdateCheck = time.Now()
 	updateStatusMu.Unlock()
 }
 
@@ -323,7 +321,24 @@ func runPrivileged(args ...string) error {
 	if err != nil {
 		return fmt.Errorf("Couldn't find the ahhhh program path.")
 	}
-	cmd := exec.Command("pkexec", append([]string{self}, args...)...)
+
+	execPath := self
+	if strings.Contains(self, "/.mount_") || os.Getenv("APPIMAGE") != "" {
+		tmpBin, err := os.CreateTemp("", "ahhhh-priv-*")
+		if err != nil {
+			return fmt.Errorf("Couldn't prepare privileged helper binary.")
+		}
+		tmpBinPath := tmpBin.Name()
+		tmpBin.Close()
+		defer os.Remove(tmpBinPath)
+
+		if err := copyFileSimple(self, tmpBinPath, 0755); err != nil {
+			return fmt.Errorf("Couldn't copy helper binary for admin install.")
+		}
+		execPath = tmpBinPath
+	}
+
+	cmd := exec.Command("pkexec", append([]string{execPath}, args...)...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
@@ -333,6 +348,19 @@ func runPrivileged(args ...string) error {
 		return fmt.Errorf("%s", msg)
 	}
 	return nil
+}
+
+func selfInstallSystemWide() error {
+	source := strings.TrimSpace(os.Getenv("APPIMAGE"))
+	if source == "" {
+		exe, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("Couldn't find the ahhhh binary path.")
+		}
+		source = exe
+	}
+	tag := detectVersionTag(filepath.Base(source), os.Getenv("ARGV0"))
+	return runPrivileged("--sys-install", "AppAppApp", source, selfRepo, tag)
 }
 
 func handleInstall(w http.ResponseWriter, r *http.Request) {
@@ -461,6 +489,8 @@ func handleUploadLocal(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	go runBackgroundUpdateCheck()
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -598,6 +628,13 @@ func runCLI(args []string) {
 func main() {
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
+		case "--self-install":
+			if err := selfInstallSystemWide(); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("Installed AppAppApp system-wide.")
+			return
+
 		case "--sys-install":
 			if len(os.Args) < 4 {
 				log.Fatal("Missing install arguments.")
@@ -631,7 +668,6 @@ func main() {
 
 	addr := "127.0.0.1:8745"
 
-	// If already running in the background, just open a browser tab and exit
 	if conn, err := net.DialTimeout("tcp", addr, 250*time.Millisecond); err == nil {
 		conn.Close()
 		_ = exec.Command("xdg-open", "http://"+addr).Start()
