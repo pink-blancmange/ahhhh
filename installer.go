@@ -48,7 +48,11 @@ type appStreamXML struct {
 	} `xml:"url"`
 }
 
-var semverTagRe = regexp.MustCompile(`v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`)
+var (
+	semverTagRe     = regexp.MustCompile(`v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`)
+	cleanSemverCore = regexp.MustCompile(`^v?(\d+\.\d+\.\d+)`)
+	trailingNoiseRe = regexp.MustCompile(`(?i)[-_ ]+v?\d+\.\d+(?:\.\d+)?(?:[-_ ]*(?:x86_64|amd64|aarch64|arm64|linux|appimage)).*$`)
+)
 
 func slugify(name string) string {
 	re := regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
@@ -56,7 +60,25 @@ func slugify(name string) string {
 }
 
 func normalizeTag(tag string) string {
-	return strings.TrimPrefix(strings.TrimSpace(tag), "v")
+	t := strings.TrimSpace(tag)
+	if strings.EqualFold(t, "local") || t == "" {
+		return ""
+	}
+	return strings.TrimPrefix(t, "v")
+}
+
+func formatVersionTag(tag string) string {
+	trimmed := strings.TrimSpace(tag)
+	if trimmed == "" || strings.EqualFold(trimmed, "local") {
+		return "local"
+	}
+	if m := cleanSemverCore.FindStringSubmatch(trimmed); len(m) == 2 {
+		return "v" + m[1]
+	}
+	if !strings.HasPrefix(trimmed, "v") {
+		return "v" + trimmed
+	}
+	return trimmed
 }
 
 func tagsEqual(a, b string) bool {
@@ -67,13 +89,20 @@ func tagsEqual(a, b string) bool {
 func detectVersionTag(candidates ...string) string {
 	for _, c := range candidates {
 		if m := semverTagRe.FindString(c); m != "" {
-			if !strings.HasPrefix(m, "v") {
-				return "v" + m
-			}
-			return m
+			return formatVersionTag(m)
 		}
 	}
 	return ""
+}
+
+func cleanFallbackName(raw string) string {
+	s := strings.TrimSpace(raw)
+	s = trailingNoiseRe.ReplaceAllString(s, "")
+	s = strings.Trim(s, "-_ ")
+	if s == "" {
+		return strings.TrimSpace(raw)
+	}
+	return s
 }
 
 func readMeta(slug string) (*InstallMeta, bool) {
@@ -148,7 +177,7 @@ func resolveGitHubRelease(repoOrURL string) (downloadURL, cleanRepo, tag string,
 		lower := strings.ToLower(a.Name)
 		if strings.HasSuffix(lower, ".appimage") {
 			if strings.Contains(lower, arch) || strings.Contains(lower, "amd64") {
-				return a.BrowserDownloadURL, repo, rel.TagName, nil
+				return a.BrowserDownloadURL, repo, formatVersionTag(rel.TagName), nil
 			}
 			if fallback == "" {
 				fallback = a.BrowserDownloadURL
@@ -156,7 +185,7 @@ func resolveGitHubRelease(repoOrURL string) (downloadURL, cleanRepo, tag string,
 		}
 	}
 	if fallback != "" {
-		return fallback, repo, rel.TagName, nil
+		return fallback, repo, formatVersionTag(rel.TagName), nil
 	}
 	return "", "", "", fmt.Errorf("This app doesn't publish an AppImage file in its latest release.")
 }
@@ -223,7 +252,7 @@ func extractDisplayName(squashRoot, fallback string) string {
 			}
 		}
 	}
-	return fallback
+	return cleanFallbackName(fallback)
 }
 
 func extractAppDescription(squashRoot string) (desc, homepage string) {
@@ -458,11 +487,16 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		if githubRepo == "" {
 			githubRepo = selfRepo
 		}
-		if releaseTag == "" || releaseTag == "local" {
-			if detected := detectVersionTag(rawName, baseSource); detected != "" {
-				releaseTag = detected
-			}
+	}
+
+	if releaseTag == "" || strings.EqualFold(releaseTag, "local") {
+		if detected := detectVersionTag(rawName, baseSource); detected != "" {
+			releaseTag = detected
+		} else {
+			releaseTag = "local"
 		}
+	} else {
+		releaseTag = formatVersionTag(releaseTag)
 	}
 
 	appDir := filepath.Join(optDir, slug)
