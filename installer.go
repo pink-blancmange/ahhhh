@@ -489,6 +489,12 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 		}
 	}
 
+	if githubRepo == "" {
+		if prev, ok := readMeta(slug); ok && prev.GitHubRepo != "" {
+			githubRepo = prev.GitHubRepo
+		}
+	}
+
 	if releaseTag == "" || strings.EqualFold(releaseTag, "local") {
 		if detected := detectVersionTag(rawName, baseSource); detected != "" {
 			releaseTag = detected
