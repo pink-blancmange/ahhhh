@@ -430,6 +430,9 @@ func installAppImageSystemWide(rawName, source, githubRepo, releaseTag string) e
 
 	iconName := installIcon(squashRoot, slug, source)
 	categories := extractCategories(squashRoot)
+	if slug == "ahhhh" && (categories == "" || categories == "Utility;") {
+		categories = "System;Utility;"
+	}
 	description, homepage := extractAppDescription(squashRoot)
 	if slug == "ahhhh" && description == "" {
 		description = "Simple Linux AppImage Installer"

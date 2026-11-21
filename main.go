@@ -272,6 +272,10 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 		name := slug
 		tag := "local"
 		desc := "Installed from a local AppImage file."
+		cats := []string{"Local"}
+		if slug == "ahhhh" {
+			cats = []string{"System"}
+		}
 		var links []AppLink
 		var latestTag string
 		var updAvail bool
@@ -301,7 +305,7 @@ func handleApps(w http.ResponseWriter, r *http.Request) {
 		apps = append([]AppItem{{
 			Name:            name,
 			Description:     desc,
-			Categories:      []string{"Local"},
+			Categories:      cats,
 			Links:           links,
 			Slug:            slug,
 			Installed:       true,
