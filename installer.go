@@ -76,7 +76,7 @@ func newGitHubRequest(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.0")
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.1")
 	req.Header.Set("Accept", "application/vnd.github+json")
 	if tok := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); tok != "" {
 		req.Header.Set("Authorization", "Bearer "+tok)
@@ -139,7 +139,6 @@ func classifyAssetKind(name string) string {
 func scoreLinuxAsset(name string, hostArch string) int {
 	lower := strings.ToLower(name)
 
-	// Hard exclusions: non-Linux OS, package managers, checksums, signatures, source archives
 	badExts := []string{
 		".deb", ".rpm", ".dmg", ".pkg", ".exe", ".msi", ".apk", ".ipa",
 		".sha256", ".sha512", ".sha1", ".md5", ".asc", ".sig", ".minisig",
@@ -164,7 +163,6 @@ func scoreLinuxAsset(name string, hostArch string) int {
 		}
 	}
 
-	// Architecture filtering
 	isArm64 := strings.Contains(lower, "aarch64") || strings.Contains(lower, "arm64")
 	isArm32 := strings.Contains(lower, "armv7") || strings.Contains(lower, "armv6") || strings.Contains(lower, "armhf")
 	isX86_64 := strings.Contains(lower, "x86_64") || strings.Contains(lower, "amd64") || strings.Contains(lower, "x64")
@@ -200,7 +198,6 @@ func scoreLinuxAsset(name string, hostArch string) int {
 		score += 45
 	}
 
-	// Slight preference for glibc over musl unless unspecified
 	if strings.Contains(lower, "musl") {
 		score -= 5
 	}
@@ -225,7 +222,6 @@ func fetchLatestGitHubRelease(repo string) (*GitHubRelease, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		// Fallback to /releases (e.g., pre-releases only)
 		req2, err2 := newGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=5", repo))
 		if err2 != nil {
 			return nil, err2
@@ -401,7 +397,7 @@ func downloadFile(url, dest string) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.0")
+	req.Header.Set("User-Agent", "ahhhh-appimage-manager/0.4.1")
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -572,7 +568,6 @@ func findPrimaryBinaryInTree(rootDir, slug string) (string, string, error) {
 				} else if strings.Contains(base, slug) {
 					sc += 50
 				}
-				// Prefer binaries inside bin/ or top-level
 				rel, _ := filepath.Rel(rootDir, path)
 				depth := strings.Count(rel, string(os.PathSeparator))
 				sc -= depth * 5
@@ -595,7 +590,6 @@ func findPrimaryBinaryInTree(rootDir, slug string) (string, string, error) {
 }
 
 func generateFallbackIcon(destPNG string, label string) {
-	// Minimal valid 1x1 PNG fallback if no icon exists in package
 	pngBytes := []byte{
 		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
 		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
@@ -643,7 +637,6 @@ func stagePackageFromFile(stagedFile, origFilename, appName, repo, tag, desc str
 		}
 		execRelPath = filepath.Join(appDir, slug+".AppImage")
 
-		// Attempt AppImage icon extraction
 		extractTmp, err := os.MkdirTemp("", "ahhhh-ai-ext-*")
 		if err == nil {
 			cmd := exec.Command(destBin, "--appimage-extract")
@@ -713,11 +706,15 @@ func stagePackageFromFile(stagedFile, origFilename, appName, repo, tag, desc str
 		generateFallbackIcon(stagedIcon, appName)
 	}
 
-	// Preserve existing GitHubRepo if local drop-in updates an existing app
 	if repo == "" {
 		if existing, err := readAppMeta(slug); err == nil && existing != nil && existing.GitHubRepo != "" {
 			repo = existing.GitHubRepo
 		}
+	}
+
+	// Keep display name consistent for ahhhh across AppImage, archive, and CLI/one-liner installs
+	if slug == "ahhhh" && (strings.EqualFold(strings.TrimSpace(appName), "ahhhh") || strings.TrimSpace(appName) == "") {
+		appName = "Apppp"
 	}
 
 	meta := AppMeta{
@@ -788,7 +785,6 @@ func commitStagedDirs(stageDirs []string) error {
 		}
 		slug := meta.Slug
 
-		// Clean previous artifacts for this slug before copying new ones
 		script.WriteString(fmt.Sprintf("rm -rf %q %q\n",
 			filepath.Join(appDir, slug),
 			filepath.Join(appDir, slug+".AppImage"),
@@ -828,6 +824,7 @@ func commitStagedDirs(stageDirs []string) error {
 		))
 	}
 
+	script.WriteString("command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true\n")
 	script.WriteString("command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications || true\n")
 
 	cmd := exec.Command("pkexec", "sh", "-c", script.String())
@@ -851,7 +848,6 @@ func prepareStagedInstallFromURL(appName, rawURL string) (string, error) {
 		return "", fmt.Errorf("missing download URL")
 	}
 
-	// If URL is a GitHub repo or release URL without a direct binary extension, resolve via GitHub Releases API
 	repo := parseGitHubRepo(u)
 	lowerU := strings.ToLower(u)
 	isDirectAsset := strings.HasSuffix(lowerU, ".appimage") ||
@@ -901,7 +897,6 @@ func deriveAppNameFromFilename(origFilename string) string {
 	name := strings.TrimSpace(origFilename)
 	lower := strings.ToLower(name)
 
-	// Strip compound and single package extensions first
 	exts := []string{
 		".appimage", ".tar.gz", ".tgz", ".tar.xz", ".txz", ".zip", ".bin", ".run",
 	}
@@ -912,7 +907,6 @@ func deriveAppNameFromFilename(origFilename string) string {
 		}
 	}
 
-	// Strip common architecture, libc, and AppImage suffixes
 	archRe := regexp.MustCompile(`(?i)[._-](x86_64|amd64|x64|aarch64|arm64|armv7l?|armhf|i386|i686|386|musl|gnu|glibc|linux|appimage)$`)
 	for {
 		next := archRe.ReplaceAllString(name, "")
@@ -922,7 +916,6 @@ func deriveAppNameFromFilename(origFilename string) string {
 		name = next
 	}
 
-	// Strip trailing version segments like -1.14.0, _2.3.1-beta.1, v0.4.0, or -20260101
 	verRe := regexp.MustCompile(`(?i)[._-]v?\d+(?:\.\d+)+(?:[-._]?(?:rc|alpha|beta|dev|nightly|snapshot|b)[._-]?\d*)?$`)
 	for {
 		next := verRe.ReplaceAllString(name, "")
@@ -932,7 +925,6 @@ func deriveAppNameFromFilename(origFilename string) string {
 		name = next
 	}
 
-	// Strip standalone trailing numeric build/release token if preceded by - or _
 	buildRe := regexp.MustCompile(`(?i)[._-]v?\d+$`)
 	if next := buildRe.ReplaceAllString(name, ""); next != name && strings.TrimSpace(next) != "" {
 		name = next
@@ -961,6 +953,7 @@ func removeInstalledApp(appName string) error {
 	slug := slugify(appName)
 	script := fmt.Sprintf(`set -e
 rm -rf %q %q %q %q %q %q
+command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications || true
 `,
 		filepath.Join(appDir, slug),
