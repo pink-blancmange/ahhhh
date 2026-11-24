@@ -23,7 +23,7 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 `Ahhhh` (`ahhhh` on the CLI) is distributed as a portable Linux **AppImage** and installs system-wide into `/opt/appimages/` with a command symlink at `/usr/local/bin/ahhhh` and a desktop entry at `/usr/share/applications/ahhhh.desktop`.
 
 ### 1. Download & Self-Install the AppImage (Recommended)
-1. Download the latest `ahhhh_*_x86_64.AppImage` (or `aarch64.AppImage`) from the [GitHub Releases](https://github.com/pink-blancmange/ahhhh/releases) page.
+1. Download the latest `ahhhh_*_x86_64.AppImage` (or `aarch64.AppImage`) from the [GitHub Releases](https://github.com/pink-blancmange/ahhhh/releases) page. *(If a brand-new tag was just pushed, give GitHub Actions a moment to finish uploading the assets.)*
 2. Make it executable and run `--self-install` to place it into `/opt/appimages/` and link `/usr/local/bin/ahhhh`:
    ```bash
    chmod +x ./ahhhh_*_x86_64.AppImage
@@ -36,7 +36,7 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 ## Supported Systems & Requirements
 
 - **Architectures:** `x86_64` (`amd64`) and `aarch64` (`arm64`).
-- **Distros:** Standard `glibc` desktop Linux distros with writable `/opt` and `/usr/local/bin` (Debian, Ubuntu, Linux Mint, MX Linux, Pop!_OS, Fedora, Arch, openSUSE, Void Linux). Read-only/immutable root distros (Silverblue, SteamOS, NixOS) and `musl` distros (Alpine) aren't supported out of the box.
+- **Distros:** Desktop Linux distros with `glibc`, FUSE support, and writable `/opt` and `/usr/local/bin` (Debian, Ubuntu, Linux Mint, MX Linux, Pop!_OS, Fedora, Arch, openSUSE, and `glibc` Void Linux). Read-only/immutable root distros (Silverblue, SteamOS, NixOS) and `musl`-based systems (Alpine or `musl` Void) aren't supported out of the box.
 - **Runtime needs:** `pkexec` (Polkit) or `sudo` for system-wide installs/removals, FUSE (`libfuse2` / `libfuse2t64` or `fuse3`) to extract icons and run Type-2 AppImages, and a web browser for the UI.
 
 ---
@@ -44,7 +44,7 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 ## Why `ahhhh`?
 
 - **Single binary, zero bloat** — Go backend with the web UI embedded inside. Runs on `127.0.0.1:8745`.
-- **Desktop integration** — Installs AppImages into `/opt/appimages/`, symlinks into `/usr/local/bin/`, pulls icons, and adds `.desktop` launchers.
+- **Desktop integration** — Installs AppImages into `/opt/appimages/`, symlinks into `/usr/local/bin/`, pulls icons, and generates `.desktop` entries using catalog categories when available (falling back to `Utility`).
 - **Local `.AppImage` drop** — Drop a local `.AppImage` onto the target box, optionally name it, and extract its icon automatically.
 - **Richer app details** — Pulls descriptions, GitHub repo info, and version tags in the inspector modal.
 - **Dice roller** — Roll random installable apps from the catalog or active category crate.
@@ -56,7 +56,7 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 
 ### GUI
 
-Launch **Ahhhh** from your desktop application menu (or run `ahhhh` in a terminal and open `http://127.0.0.1:8745`). Use the web UI to browse the catalog, drag-and-drop local `.AppImage` files, install from a GitHub repo/URL, update installed apps, or remove them.
+Launch **Ahhhh** from your desktop application menu (or run `ahhhh` in a terminal and open `http://127.0.0.1:8745`). Running `ahhhh` in a terminal keeps the local server running in the foreground (`Ctrl+C` to stop) and requires port `8745` to be free. Use the web UI to browse the catalog, drag-and-drop local `.AppImage` files, install from a GitHub repo/URL, update installed apps, or remove them.
 
 ### CLI
 
@@ -77,7 +77,7 @@ The GUI checks for updates to your installed GitHub-tracked AppImages when it fi
 ## Build from Source
 
 ```bash
-git clone [https://github.com/pink-blancmange/ahhhh.git](https://github.com/pink-blancmange/ahhhh.git)
+git clone https://github.com/pink-blancmange/ahhhh.git
 cd ahhhh
 go build -o ahhhh .
 ```
