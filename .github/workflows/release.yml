@@ -20,29 +20,15 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install nfpm
-        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
-
-      - name: Build Linux binaries, tar.gz, .deb, and AppImage packages
+      - name: Build Linux AppImages
         env:
           TAG_VERSION: ${{ github.ref_name }}
         run: |
           VERSION="${TAG_VERSION#v}"
-          mkdir -p dist stage-amd64 stage-arm64 AppDir-amd64/usr/bin AppDir-arm64/usr/bin
+          mkdir -p dist AppDir-amd64/usr/bin AppDir-arm64/usr/bin
 
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/ahhhh-linux-amd64 .
           GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/ahhhh-linux-arm64 .
-
-          cp dist/ahhhh-linux-amd64 stage-amd64/ahhhh
-          cp packaging/ahhhh.desktop stage-amd64/ahhhh.desktop
-          tar -C stage-amd64 -czf "dist/ahhhh_${VERSION}_linux_amd64.tar.gz" ahhhh ahhhh.desktop
-
-          cp dist/ahhhh-linux-arm64 stage-arm64/ahhhh
-          cp packaging/ahhhh.desktop stage-arm64/ahhhh.desktop
-          tar -C stage-arm64 -czf "dist/ahhhh_${VERSION}_linux_arm64.tar.gz" ahhhh ahhhh.desktop
-
-          VERSION="$VERSION" nfpm pkg --config packaging/nfpm-amd64.yaml --packager deb --target "dist/ahhhh_${VERSION}_amd64.deb"
-          VERSION="$VERSION" nfpm pkg --config packaging/nfpm-arm64.yaml --packager deb --target "dist/ahhhh_${VERSION}_arm64.deb"
 
           curl -fsSL -o appimagetool-x86_64.AppImage https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
@@ -73,18 +59,13 @@ jobs:
           cp packaging/ahhhh.png AppDir-arm64/ahhhh.png
           ARCH=aarch64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run AppDir-arm64 "dist/ahhhh_${VERSION}_aarch64.AppImage"
 
-          (cd dist && sha256sum ahhhh-linux-* *.tar.gz *.deb *.AppImage > checksums.txt)
+          rm -f dist/ahhhh-linux-amd64 dist/ahhhh-linux-arm64
+          (cd dist && sha256sum *.AppImage > checksums.txt)
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/ahhhh-linux-amd64
-            dist/ahhhh-linux-arm64
-            dist/ahhhh_*_linux_amd64.tar.gz
-            dist/ahhhh_*_linux_arm64.tar.gz
-            dist/ahhhh_*_amd64.deb
-            dist/ahhhh_*_arm64.deb
             dist/ahhhh_*_x86_64.AppImage
             dist/ahhhh_*_aarch64.AppImage
             dist/checksums.txt
