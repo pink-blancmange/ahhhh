@@ -777,6 +777,44 @@ func stagePackageFromFile(stagedFile, origFilename, appName, repo, tag, desc str
 		return "", err
 	}
 
+	cats := lookupCatalogCategories(slug, repo)
+	var catParts []string
+	seenCat := make(map[string]bool)
+	for _, c := range cats {
+		clean := strings.TrimSpace(c)
+		if clean == "" {
+			continue
+		}
+		// Normalize common feed names to standard XDG desktop categories
+		mapped := clean
+		switch strings.ToLower(clean) {
+		case "multimedia", "media", "video", "audio", "audiovideo", "tv", "iptv", "music":
+			mapped = "AudioVideo"
+		case "development", "dev", "programming":
+			mapped = "Development"
+		case "games", "game", "gaming":
+			mapped = "Game"
+		case "graphics", "image", "photo", "photography":
+			mapped = "Graphics"
+		case "network", "internet", "web", "chat", "social":
+			mapped = "Network"
+		case "office", "productivity", "notes", "email":
+			mapped = "Office"
+		case "system", "sysadmin", "settings":
+			mapped = "System"
+		case "utility", "utilities", "tools", "accessories":
+			mapped = "Utility"
+		}
+		if !seenCat[mapped] {
+			seenCat[mapped] = true
+			catParts = append(catParts, mapped)
+		}
+	}
+	categoriesLine := "Utility;"
+	if len(catParts) > 0 {
+		categoriesLine = strings.Join(catParts, ";") + ";"
+	}
+
 	desktopContent := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=%s
@@ -784,8 +822,8 @@ Comment=%s
 Exec=%s
 Icon=%s
 Terminal=false
-Categories=Utility;
-`, appName, strings.ReplaceAll(desc, "\n", " "), filepath.Join(binDir, slug), slug)
+Categories=%s
+`, appName, strings.ReplaceAll(desc, "\n", " "), filepath.Join(binDir, slug), slug, categoriesLine)
 
 	if err := os.WriteFile(filepath.Join(stageDir, slug+".desktop"), []byte(desktopContent), 0o644); err != nil {
 		os.RemoveAll(stageDir)

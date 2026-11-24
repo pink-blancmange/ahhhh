@@ -185,6 +185,28 @@ func buildMergedApps() []CatalogApp {
 	return out
 }
 
+func lookupCatalogCategories(slug, repo string) []string {
+	targetSlug := strings.ToLower(strings.TrimSpace(slug))
+	targetRepo := strings.ToLower(strings.TrimSpace(repo))
+
+	catalogMu.RLock()
+	defer catalogMu.RUnlock()
+
+	for _, item := range catalogCache {
+		if targetSlug != "" && strings.ToLower(item.Slug) == targetSlug && len(item.Categories) > 0 {
+			return append([]string(nil), item.Categories...)
+		}
+		if targetRepo != "" {
+			for _, lnk := range item.Links {
+				if strings.Contains(strings.ToLower(lnk.URL), targetRepo) && len(item.Categories) > 0 {
+					return append([]string(nil), item.Categories...)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 var appVersion = "dev"
 
 func resolveSelfTag(baseName string) string {
