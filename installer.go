@@ -71,6 +71,45 @@ type ResolvedGitHubTarget struct {
 	Size        int64  `json:"size"`
 }
 
+func runRootShellScript(script string) error {
+	if os.Geteuid() == 0 {
+		cmd := exec.Command("sh", "-c", script)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("root command failed: %v (%s)", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
+
+	if _, err := exec.LookPath("pkexec"); err == nil && os.Getenv("DISPLAY") != "" {
+		cmd := exec.Command("pkexec", "sh", "-c", script)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("pkexec failed or canceled: %v (%s)", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
+
+	if _, err := exec.LookPath("sudo"); err == nil {
+		cmd := exec.Command("sudo", "-n", "sh", "-c", script)
+		if _, err := cmd.CombinedOutput(); err == nil {
+			return nil
+		}
+		if fi, statErr := os.Stdin.Stat(); statErr == nil && (fi.Mode()&os.ModeCharDevice) != 0 {
+			cmd2 := exec.Command("sudo", "sh", "-c", script)
+			cmd2.Stdin = os.Stdin
+			cmd2.Stdout = os.Stdout
+			cmd2.Stderr = os.Stderr
+			if err := cmd2.Run(); err != nil {
+				return fmt.Errorf("sudo command failed: %v", err)
+			}
+			return nil
+		}
+		return fmt.Errorf("sudo requires interactive password or cached credentials")
+	}
+
+	return fmt.Errorf("no privilege escalation tool (pkexec or sudo) available")
+}
+
 func newGitHubRequest(url string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -827,9 +866,8 @@ func commitStagedDirs(stageDirs []string) error {
 	script.WriteString("command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true\n")
 	script.WriteString("command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications || true\n")
 
-	cmd := exec.Command("pkexec", "sh", "-c", script.String())
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("admin install failed: %v (%s)", err, strings.TrimSpace(string(out)))
+	if err := runRootShellScript(script.String()); err != nil {
+		return fmt.Errorf("admin install failed: %w", err)
 	}
 	return nil
 }
@@ -963,9 +1001,8 @@ command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /u
 		filepath.Join(desktopDir, slug+".desktop"),
 		filepath.Join(iconDir, slug+".png"),
 	)
-	cmd := exec.Command("pkexec", "sh", "-c", script)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("remove failed: %v (%s)", err, strings.TrimSpace(string(out)))
+	if err := runRootShellScript(script); err != nil {
+		return fmt.Errorf("remove failed: %w", err)
 	}
 	return nil
 }

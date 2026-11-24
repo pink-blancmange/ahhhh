@@ -185,9 +185,32 @@ func buildMergedApps() []CatalogApp {
 	return out
 }
 
+func runSelfInstall() error {
+	srcPath := strings.TrimSpace(os.Getenv("APPIMAGE"))
+	if srcPath == "" {
+		exe, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		srcPath = exe
+	}
+	baseName := filepath.Base(srcPath)
+	if !strings.HasSuffix(strings.ToLower(baseName), ".appimage") {
+		baseName = "ahhhh.AppImage"
+	}
+	return installLocalFile(srcPath, baseName, "Ahhhh")
+}
+
 func main() {
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
+		case "--self-install", "self-install":
+			if err := runSelfInstall(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			fmt.Println("Installed successfully.")
+			return
 		case "install":
 			if len(os.Args) < 3 {
 				fmt.Fprintln(os.Stderr, "Usage: ahhhh install <owner/repo-or-url> [name]")
@@ -269,7 +292,7 @@ func main() {
 		_ = json.NewEncoder(w).Encode(meta)
 	})
 
-	mux.HandleFunc("/api/install-url", func(w http.ResponseWriter, r *http.Request) {
+	handleInstallURL := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST required", http.StatusMethodNotAllowed)
 			return
@@ -288,7 +311,10 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-	})
+	}
+
+	mux.HandleFunc("/api/install", handleInstallURL)
+	mux.HandleFunc("/api/install-url", handleInstallURL)
 
 	mux.HandleFunc("/api/install-local", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -391,7 +417,7 @@ func main() {
 	})
 
 	url := "http://" + listenAddr
-	log.Printf("APPAPPAPP (Ahhhh) listening on %s", url)
+	log.Printf("Ahhhh listening on %s", url)
 	go openBrowser(url)
 
 	if err := http.ListenAndServe(listenAddr, mux); err != nil {
