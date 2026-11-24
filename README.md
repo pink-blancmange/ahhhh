@@ -23,13 +23,13 @@ Browse 4,200+ AppImages, roll a die when you're bored, drag-and-drop local `.App
 `Ahhhh` (`ahhhh` on the CLI) is distributed as a portable Linux **AppImage** and installs system-wide into `/opt/appimages/` with a command symlink at `/usr/local/bin/ahhhh` and a desktop entry at `/usr/share/applications/ahhhh.desktop`.
 
 ### 1. Download & Self-Install the AppImage (Recommended)
-1. Download the latest `ahhhh_*_x86_64.AppImage` (or `aarch64.AppImage`) from the [GitHub Releases](https://github.com/pink-blancmange/ahhhh/releases) page. *(If a brand-new tag was just pushed, give GitHub Actions a moment to finish uploading the assets.)*
+1. Download the latest `ahhhh_*_x86_64.AppImage` (or `aarch64.AppImage`) from the [GitHub Releases](https://github.com/pink-blancmange/ahhhh/releases) page.
 2. Make it executable and run `--self-install` to place it into `/opt/appimages/` and link `/usr/local/bin/ahhhh`:
    ```bash
    chmod +x ./ahhhh_*_x86_64.AppImage
    ./ahhhh_*_x86_64.AppImage --self-install
    ```
-3. Launch `Ahhhh` from your desktop application menu or by running `ahhhh` in a terminal, then open `http://127.0.0.1:8745` in your browser.
+3. Launch `Ahhhh` from your desktop application menu or by running `ahhhh` in a terminal, then open `http://127.0.0.1:8745` in your browser. Once installed as an AppImage, future `Ahhhh` updates can be installed right inside the web UI just like any other tracked GitHub AppImage.
 
 ---
 
@@ -70,7 +70,7 @@ ahhhh install <owner/repo-or-url> [name]    # Install an app directly from GitHu
 
 ## Updates
 
-The GUI checks for updates to your installed GitHub-tracked AppImages when it first opens and every 30 minutes thereafter. When updates are available, an **`Updates`** button appears in the header so you can update everything at once.
+Because `Ahhhh` is installed as a tracked AppImage, the GUI checks for updates to `Ahhhh` and your other installed GitHub AppImages when it first opens and every 30 minutes thereafter. When updates are available, an **`Updates`** button appears in the header so you can update everything right inside the app.
 
 ---
 
