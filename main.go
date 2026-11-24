@@ -58,13 +58,41 @@ var (
 	catalogCache []CatalogApp
 )
 
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	if _, err := exec.LookPath("xdg-open"); err == nil {
-		cmd = exec.Command("xdg-open", url)
+func waitForListener(addr string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if conn, err := net.DialTimeout("tcp", addr, 150*time.Millisecond); err == nil {
+			_ = conn.Close()
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	if cmd != nil {
-		_ = cmd.Start()
+}
+
+func openBrowser(url string) {
+	waitForListener(listenAddr, 3*time.Second)
+
+	type openerSpec struct {
+		bin  string
+		args []string
+	}
+	openers := []openerSpec{
+		{bin: "gio", args: []string{"open", url}},
+		{bin: "xdg-open", args: []string{url}},
+		{bin: "firefox", args: []string{url}},
+		{bin: "chromium", args: []string{url}},
+		{bin: "google-chrome", args: []string{url}},
+		{bin: "brave-browser", args: []string{url}},
+	}
+
+	for _, op := range openers {
+		if path, err := exec.LookPath(op.bin); err == nil {
+			cmd := exec.Command(path, op.args...)
+			if err := cmd.Start(); err == nil {
+				go func(c *exec.Cmd) { _ = c.Wait() }(cmd)
+				return
+			}
+		}
 	}
 }
 
