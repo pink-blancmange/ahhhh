@@ -987,6 +987,14 @@ func installLocalFile(tmpPath, origFilename, customName string) error {
 	return commitStagedDirs([]string{stageDir})
 }
 
+func installSelfAppImage(tmpPath, origFilename, repo, tag string) error {
+	stageDir, err := stagePackageFromFile(tmpPath, origFilename, "Ahhhh", repo, tag, "")
+	if err != nil {
+		return err
+	}
+	return commitStagedDirs([]string{stageDir})
+}
+
 func removeInstalledApp(appName string) error {
 	slug := slugify(appName)
 	script := fmt.Sprintf(`set -e

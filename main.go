@@ -185,6 +185,23 @@ func buildMergedApps() []CatalogApp {
 	return out
 }
 
+var appVersion = "dev"
+
+func resolveSelfTag(baseName string) string {
+	tag := strings.TrimSpace(appVersion)
+	if tag == "" || tag == "dev" {
+		parts := strings.Split(baseName, "_")
+		if len(parts) >= 2 && len(parts[1]) > 0 && parts[1][0] >= '0' && parts[1][0] <= '9' {
+			tag = "v" + parts[1]
+		} else {
+			return ""
+		}
+	} else if !strings.HasPrefix(tag, "v") {
+		tag = "v" + tag
+	}
+	return tag
+}
+
 func runSelfInstall() error {
 	srcPath := strings.TrimSpace(os.Getenv("APPIMAGE"))
 	if srcPath == "" {
@@ -198,7 +215,7 @@ func runSelfInstall() error {
 	if !strings.HasSuffix(strings.ToLower(baseName), ".appimage") {
 		baseName = "ahhhh.AppImage"
 	}
-	return installLocalFile(srcPath, baseName, "Ahhhh")
+	return installSelfAppImage(srcPath, baseName, "pink-blancmange/ahhhh", resolveSelfTag(baseName))
 }
 
 func main() {
