@@ -137,6 +137,12 @@ func loadCatalog() error {
 	catalogMu.Lock()
 	catalogCache = items
 	catalogMu.Unlock()
+
+	source := "embedded"
+	if loadedFromLive {
+		source = "live"
+	}
+	log.Printf("catalog loaded from %s (%d apps)", source, len(items))
 	return nil
 }
 
